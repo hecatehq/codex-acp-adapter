@@ -23,6 +23,8 @@
 ## Phase 3: Codex Runtime Bridge
 
 - use `internal/process` for every subprocess boundary
+- keep `doctor` green against the target Codex binary before enabling real
+  runtime sessions
 - choose a stable Codex integration boundary
 - implement auth/session/prompt/cancel/config/mcp/tool mappings
 - port the edge cases recorded in `SOURCE_REVIEW.md`
