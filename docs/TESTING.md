@@ -52,15 +52,17 @@ runtime bridge.
   runtime RPC error propagation
 - session capability preservation in runtime initialize results
 - ACP session lifecycle calls over the runtime JSON-RPC client: `session/new`,
-  `session/prompt`, `session/cancel`, `session/close`, session updates, stop
-  reasons, MCP server payloads, and RPC error propagation
+  `session/fork`, `session/prompt`, `session/cancel`, `session/close`, session
+  updates, stop reasons, MCP server payloads, and RPC error propagation
 - `session/new` result preservation for runtime-provided `configOptions` and
   legacy `modes`, so model/reasoning/mode selectors survive the bridge
 - runtime ACP config/mode setters: `session/set_config_option` and
   `session/set_mode` raw result forwarding
-- ACP session load/resume/list/delete protocol calls, including replay updates,
-  raw resume result preservation, listed session metadata, cursor parsing, and
-  delete request forwarding
+- ACP session load/resume/fork/list/delete protocol calls, including replay
+  updates, raw resume/fork result preservation, listed session metadata, cursor
+  parsing, and delete request forwarding
+- unstable MCP-over-ACP `mcp/message` pass-through, including raw inner MCP
+  response preservation
 - ACP server-to-runtime bridge behavior: handler param validation, session
   method proxying, prompt update forwarding, cancel notifications, close
   requests, and runtime RPC error mapping
@@ -70,6 +72,8 @@ runtime bridge.
   before `session/close` responds
 - ACP server-to-runtime bridge coverage for session load, resume, list, and
   delete methods
+- ACP server-to-runtime bridge coverage for session fork and MCP message
+  forwarding
 - ACP bridge forwarding for dynamic `session/update` payloads such as
   `available_commands_update` and `config_option_update`
 - ACP bridge forwarding for runtime child requests that require client
@@ -106,7 +110,8 @@ this one:
 - shell, file, patch, web, MCP, image, plan, review, TODO, and goal tool
   mappings
 - permission requests, late permission responses, and rejected/denied tools
-- MCP server merging and MCP tool approval elicitations
+- MCP server merging, vendor MCP connection lifecycle semantics, and MCP tool
+  approval elicitations
 - production release signing/provenance
 
 ## Test Strategy
