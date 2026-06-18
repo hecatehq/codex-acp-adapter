@@ -29,6 +29,8 @@
 - use `internal/runtimeacp` for subprocess ACP lifecycle negotiation
 - build real session bridges on the typed `runtimeacp` initialize/session
   calls before adding vendor-specific tool mappings
+- use `internal/runtimebridge` as the ACP server handler seam for
+  subprocess-backed sessions
 - keep `doctor` green against the target Codex binary before enabling real
   runtime sessions
 - choose a stable Codex integration boundary
