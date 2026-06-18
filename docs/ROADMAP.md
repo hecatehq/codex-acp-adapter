@@ -22,6 +22,7 @@
 
 ## Phase 3: Codex Runtime Bridge
 
+- use `internal/process` for every subprocess boundary
 - choose a stable Codex integration boundary
 - implement auth/session/prompt/cancel/config/mcp/tool mappings
 - port the edge cases recorded in `SOURCE_REVIEW.md`
