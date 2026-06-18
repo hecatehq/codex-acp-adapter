@@ -47,6 +47,9 @@
   legacy `session/set_mode` API without rewriting returned config state
 - use `internal/runtimehost` to compose process launch, runtime initialize, and
   ACP server bridge options
+- defer subprocess-backed runtime startup until the outer ACP client's
+  `initialize` params are available, then pass those client capabilities into
+  the child runtime handshake
 - expose the subprocess-backed runtime path only through explicit root runtime
   flags until the Codex boundary is stable
 - keep `doctor` green against the target Codex binary before enabling real
