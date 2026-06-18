@@ -13,6 +13,11 @@ runtime bridge.
 - notification dispatch without responses
 - fake runtime method dispatch through the stdio transport
 - fake runtime error propagation
+- fake runtime session creation
+- fake prompt lifecycle with assistant chunk, tool call, and tool update
+  notifications emitted before the prompt response
+- cancel notification and cancel request behavior
+- session close and post-close not-found behavior
 - scaffold `session/prompt` not-implemented errors
 - 1 MiB inbound message cap
 
@@ -21,9 +26,9 @@ runtime bridge.
 These must be tested before Hecate switches from the current Codex ACP adapter to
 this one:
 
-- session create/load/resume/list/close
+- session load/resume/list
 - prompt streaming with assistant chunks and terminal prompt results
-- cancellation and no double-settle behavior
+- real cancellation and no double-settle behavior
 - auth methods and auth-required errors
 - model/config option discovery and updates
 - permission modes

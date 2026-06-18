@@ -18,6 +18,7 @@
 - fake runtime events for assistant chunks, tool calls, permission requests,
   command output, cancellation, and model options
 - tests proving ACP output shape before any real vendor/runtime process is used
+- session lifecycle coverage for create, prompt, cancel, and close
 
 ## Phase 3: Codex Runtime Bridge
 
