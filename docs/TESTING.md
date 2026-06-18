@@ -16,6 +16,8 @@ runtime bridge.
 - request ID preservation
 - server-to-client JSON-RPC requests from handlers, including successful
   client responses and client RPC errors
+- in-flight client notification dispatch while a request handler is running,
+  including prompt cancellation through the runtime bridge
 - malformed JSON errors without stopping later requests
 - invalid JSON-RPC version errors
 - notification dispatch without responses
@@ -87,7 +89,7 @@ this one:
 
 - vendor-specific persistent session storage and restore semantics
 - prompt streaming with assistant chunks and terminal prompt results
-- real cancellation and no double-settle behavior
+- real vendor-runtime cancellation and no double-settle behavior
 - auth methods and auth-required errors
 - model/config option discovery and updates
 - permission modes
