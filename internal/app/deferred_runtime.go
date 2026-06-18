@@ -6,11 +6,11 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/hecatehq/codex-acp-adapter/internal/acp"
-	"github.com/hecatehq/codex-acp-adapter/internal/runtimeacp"
-	"github.com/hecatehq/codex-acp-adapter/internal/runtimebridge"
-	"github.com/hecatehq/codex-acp-adapter/internal/runtimehost"
-	"github.com/hecatehq/codex-acp-adapter/internal/runtimejsonrpc"
+	"github.com/hecatehq/acp-adapter-kit/acp"
+	"github.com/hecatehq/acp-adapter-kit/runtimeacp"
+	"github.com/hecatehq/acp-adapter-kit/runtimebridge"
+	"github.com/hecatehq/acp-adapter-kit/runtimehost"
+	"github.com/hecatehq/acp-adapter-kit/runtimejsonrpc"
 )
 
 var errRuntimeHostNotInitialized = errors.New("runtime host is not initialized")
