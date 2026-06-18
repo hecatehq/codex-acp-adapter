@@ -54,6 +54,20 @@
   flags until the Codex boundary is stable
 - keep `doctor` green against the target Codex binary before enabling real
   runtime sessions
+- use `github.com/coder/acp-go-sdk` as the upstream source for generated ACP
+  protocol primitives where its JSON shape matches the adapter contract
+- keep the local `internal/acp` stdio transport until an SDK-backed transport can
+  preserve the adapter's ordering and cancellation invariants: ordinary inbound
+  methods are processed in order, notifications and explicitly concurrent
+  methods can cut through a running method, server-to-client request IDs stay
+  visually distinct from inbound IDs, malformed/version-invalid messages produce
+  JSON-RPC errors, and the 1 MiB line cap remains enforced
+- prefer small DTO/error aliases and parity tests before replacing larger
+  runtime session payloads; generated SDK unions can be stricter than the
+  adapter's current pass-through shapes
+- keep `runtimeacp.InitializeParams` hand-written for now because the generated
+  SDK request emits `clientCapabilities.auth` when client capabilities are set,
+  which would change the adapter's current initialize wire shape
 - choose a stable Codex integration boundary
 - implement auth/session/prompt/cancel/config/mcp/tool mappings
 - port the edge cases recorded in `SOURCE_REVIEW.md`
