@@ -27,6 +27,8 @@
 - use `internal/runtimejsonrpc` for newline-delimited JSON-RPC over runtime
   stdio
 - use `internal/runtimeacp` for subprocess ACP lifecycle negotiation
+- build real session bridges on the typed `runtimeacp` initialize/session
+  calls before adding vendor-specific tool mappings
 - keep `doctor` green against the target Codex binary before enabling real
   runtime sessions
 - choose a stable Codex integration boundary
