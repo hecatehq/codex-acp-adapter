@@ -74,6 +74,6 @@
 
 ## Phase 4: Release and Hecate Integration
 
-- signed multi-platform releases
+- signed/provenance-backed release hardening
 - Hecate registry entry points at `codex-acp-adapter`
 - legacy npm launcher becomes explicit opt-in only
