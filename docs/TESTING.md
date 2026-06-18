@@ -89,6 +89,8 @@ runtime bridge.
 - Coder ACP SDK compatibility guardrails for the adopted protocol primitives:
   JSON-RPC error shape, default initialize protocol version, and selected
   runtime ACP request JSON shapes
+- release packaging gate through `make release-check`: unit tests, race tests,
+  vet, and a version-stamped local binary build
 
 ## Not Covered Yet
 
@@ -105,7 +107,7 @@ this one:
   mappings
 - permission requests, late permission responses, and rejected/denied tools
 - MCP server merging and MCP tool approval elicitations
-- deterministic release binaries
+- production release signing/provenance
 
 ## Test Strategy
 
