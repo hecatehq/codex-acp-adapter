@@ -32,15 +32,14 @@ Implemented:
 - ACP initialize client for subprocess runtime negotiation
 - typed ACP session lifecycle calls for subprocess runtimes
 - ACP server-to-runtime bridge for session methods and streamed updates
+- runtime host seam that launches, initializes, and exposes the bridged child
 
 Not implemented yet:
 
 - Codex CLI/native runtime integration
-- session creation/load/resume/list
-- prompt streaming
-- tool/permission mapping
-- cancellation
-- model discovery
+- real runtime-backed session load/resume/list
+- vendor-specific prompt/tool/permission mapping
+- runtime config/auth/model discovery
 - release packaging
 
 ## Development
