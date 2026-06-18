@@ -33,6 +33,8 @@
   subprocess-backed sessions
 - use `internal/runtimehost` to compose process launch, runtime initialize, and
   ACP server bridge options
+- expose the subprocess-backed runtime path only through explicit root runtime
+  flags until the Codex boundary is stable
 - keep `doctor` green against the target Codex binary before enabling real
   runtime sessions
 - choose a stable Codex integration boundary
