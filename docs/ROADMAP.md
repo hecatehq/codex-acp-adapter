@@ -23,6 +23,7 @@
 ## Phase 3: Codex Runtime Bridge
 
 - use `internal/process` for every subprocess boundary
+- use `internal/runtimeproc` as the only process-backed runtime launcher
 - keep `doctor` green against the target Codex binary before enabling real
   runtime sessions
 - choose a stable Codex integration boundary

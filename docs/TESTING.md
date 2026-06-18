@@ -27,6 +27,8 @@ runtime bridge.
   process IDs, exit errors, shell rejection, and cancellation
 - `doctor` runtime-boundary probe success, missing-binary, shell rejection,
   failed version-probe, secret redaction, and invalid-workdir behavior
+- runtime launcher defaults, env/argv merging, bounded stderr, shell rejection,
+  missing-workdir validation, exit errors, and cancellation
 
 ## Not Covered Yet
 
@@ -59,3 +61,7 @@ pipes.
 Use `internal/doctor` for local runtime readiness checks. Its tests use the Go
 test binary as a fake Codex executable so command probing stays deterministic
 and does not require a real Codex install.
+
+Use `internal/runtimeproc` for the process-backed runtime boundary. It is the
+only place that should decide the default Codex executable, allowed inherited
+environment, and launch-time stdio process wiring.

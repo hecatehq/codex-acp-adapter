@@ -27,6 +27,7 @@ Implemented:
 - source-review notes for the current npm/native adapter stack
 - unit tests for the protocol scaffold
 - `doctor` command for probing the local Codex binary boundary
+- process-backed runtime launcher seam
 
 Not implemented yet:
 
