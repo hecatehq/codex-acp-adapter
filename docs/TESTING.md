@@ -29,6 +29,9 @@ runtime bridge.
   failed version-probe, secret redaction, and invalid-workdir behavior
 - runtime launcher defaults, env/argv merging, bounded stderr, shell rejection,
   missing-workdir validation, exit errors, and cancellation
+- runtime JSON-RPC client request/response matching, notifications, child
+  events, error responses, malformed stdout failure, and request timeout
+  cleanup
 
 ## Not Covered Yet
 
@@ -65,3 +68,8 @@ and does not require a real Codex install.
 Use `internal/runtimeproc` for the process-backed runtime boundary. It is the
 only place that should decide the default Codex executable, allowed inherited
 environment, and launch-time stdio process wiring.
+
+Use `internal/runtimejsonrpc` for newline-delimited JSON-RPC over a launched
+runtime process. It owns request IDs, pending response matching, child
+notification delivery, and protocol decode failures; higher layers should keep
+Codex-specific ACP mapping outside this transport client.

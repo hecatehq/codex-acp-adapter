@@ -24,6 +24,8 @@
 
 - use `internal/process` for every subprocess boundary
 - use `internal/runtimeproc` as the only process-backed runtime launcher
+- use `internal/runtimejsonrpc` for newline-delimited JSON-RPC over runtime
+  stdio
 - keep `doctor` green against the target Codex binary before enabling real
   runtime sessions
 - choose a stable Codex integration boundary
