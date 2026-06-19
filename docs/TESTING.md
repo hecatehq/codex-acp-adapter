@@ -125,8 +125,10 @@ parity.
   bridge
 - root ACP native command bridge: session creation with Codex model/reasoning
   config options, config updates, `codex exec` argv construction, additional
-  workspace directories, assistant text updates from command stdout, and prompt
-  completion
+  workspace directories, assistant text updates from command stdout, streamed
+  stdout chunks, generic command `tool_call` activity, in-memory
+  load/resume/fork capability, bounded transcript replay for later command
+  prompts, and prompt completion
 - Coder ACP SDK compatibility guardrails for the adopted protocol primitives:
   JSON-RPC error shape, default initialize protocol version, and selected
   runtime ACP request JSON shapes
@@ -138,8 +140,9 @@ parity.
 These must be tested before Hecate uses this as the default production Codex
 ACP bridge:
 
-- vendor-specific persistent session storage and restore semantics
-- prompt streaming with assistant chunks and terminal prompt results
+- vendor-specific durable persistent session storage and restore semantics
+  across adapter process restarts
+- terminal prompt results beyond command stdout streaming
 - real vendor-runtime cancellation and no double-settle behavior
 - auth methods and auth-required errors
 - model/config option discovery beyond the initial static command-backed

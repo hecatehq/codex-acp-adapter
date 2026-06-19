@@ -46,6 +46,7 @@ func Info(version string) acp.AdapterInfo {
 			Images:          true,
 			EmbeddedContext: true,
 			MCPHTTP:         true,
+			LoadSession:     true,
 		},
 	}
 }
@@ -60,8 +61,9 @@ func Options() []acp.Option {
 
 func CommandSpec() *commandbridge.Spec {
 	return &commandbridge.Spec{
-		Options:     ConfigOptions(),
-		BuildPrompt: PromptCommand,
+		Options:           ConfigOptions(),
+		IncludeTranscript: true,
+		BuildPrompt:       PromptCommand,
 	}
 }
 
