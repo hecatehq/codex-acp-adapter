@@ -256,7 +256,8 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 		`{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"` + workdir + `","additionalDirectories":["` + extraDir + `"]}}`,
 		`{"jsonrpc":"2.0","id":2,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"model","value":"gpt-5-codex"}}`,
 		`{"jsonrpc":"2.0","id":3,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"reasoning_effort","value":"high"}}`,
-		`{"jsonrpc":"2.0","id":4,"method":"session/prompt","params":{"sessionId":"session-1","prompt":[{"type":"text","text":"hello codex"}]}}`,
+		`{"jsonrpc":"2.0","id":4,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"sandbox","value":"read-only"}}`,
+		`{"jsonrpc":"2.0","id":5,"method":"session/prompt","params":{"sessionId":"session-1","prompt":[{"type":"text","text":"hello codex"}]}}`,
 	}, "\n") + "\n")
 	spec := adapterSpec(input, &stdout, &stderr)
 	spec.Command.NewID = func() string { return "session-1" }
@@ -264,7 +265,7 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 		wantArgs := []string{
 			"exec",
 			"--cd", workdir,
-			"--sandbox", "workspace-write",
+			"--sandbox", "read-only",
 			"--ask-for-approval", "never",
 			"--skip-git-repo-check",
 			"--add-dir", extraDir,
@@ -283,8 +284,8 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 		t.Fatalf("Run returned %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
 	responses := decodeAppResponses(t, stdout.Bytes())
-	if len(responses) != 7 {
-		t.Fatalf("got %d envelopes, want session/new, two config updates, tool start, assistant update, tool finish, prompt result\n%s", len(responses), stdout.String())
+	if len(responses) != 8 {
+		t.Fatalf("got %d envelopes, want session/new, three config updates, tool start, assistant update, tool finish, prompt result\n%s", len(responses), stdout.String())
 	}
 	var created struct {
 		SessionID     string `json:"sessionId"`
@@ -295,8 +296,8 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 		} `json:"configOptions"`
 	}
 	decodeAppResult(t, responses[0], &created)
-	if created.SessionID != "session-1" || len(created.ConfigOptions) != 2 {
-		t.Fatalf("created session = %#v, want id and two config options", created)
+	if created.SessionID != "session-1" || len(created.ConfigOptions) != 3 {
+		t.Fatalf("created session = %#v, want id and three config options", created)
 	}
 	if created.ConfigOptions[0].ID != "model" || created.ConfigOptions[0].Category != "model" {
 		t.Fatalf("model option = %#v, want model category", created.ConfigOptions[0])
@@ -304,17 +305,20 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 	if created.ConfigOptions[1].ID != "reasoning_effort" || created.ConfigOptions[1].Category != "thought_level" {
 		t.Fatalf("reasoning option = %#v, want thought_level category", created.ConfigOptions[1])
 	}
-	start := decodeAppUpdate(t, responses[3])
+	if created.ConfigOptions[2].ID != "sandbox" || created.ConfigOptions[2].Category != "permission" || created.ConfigOptions[2].CurrentValue != "workspace-write" {
+		t.Fatalf("sandbox option = %#v, want permission category with workspace-write default", created.ConfigOptions[2])
+	}
+	start := decodeAppUpdate(t, responses[4])
 	if start.Update.SessionUpdate != "tool_call" ||
 		start.Update.Status != "in_progress" ||
 		start.Update.ToolCallID == "" {
 		t.Fatalf("tool start = %#v, want running command", start)
 	}
-	update := decodeAppUpdate(t, responses[4])
+	update := decodeAppUpdate(t, responses[5])
 	if update.Update.SessionUpdate != "agent_message_chunk" || decodeAppChunkText(t, update.Update.Content) != "codex answer" {
 		t.Fatalf("assistant update = %#v, want codex answer", update)
 	}
-	finish := decodeAppUpdate(t, responses[5])
+	finish := decodeAppUpdate(t, responses[6])
 	if finish.Update.SessionUpdate != "tool_call_update" ||
 		finish.Update.ToolCallID != start.Update.ToolCallID ||
 		finish.Update.Status != "completed" {
@@ -323,7 +327,7 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 	var prompt struct {
 		StopReason string `json:"stopReason"`
 	}
-	decodeAppResult(t, responses[6], &prompt)
+	decodeAppResult(t, responses[7], &prompt)
 	if prompt.StopReason != "end_turn" {
 		t.Fatalf("stop reason = %q, want end_turn", prompt.StopReason)
 	}

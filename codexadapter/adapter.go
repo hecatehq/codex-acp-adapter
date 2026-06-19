@@ -97,6 +97,18 @@ func ConfigOptions() []commandbridge.SelectConfigOption {
 				{Value: "xhigh", Name: "xHigh"},
 			},
 		},
+		{
+			ID:           "sandbox",
+			Name:         "Sandbox",
+			Description:  "Codex CLI sandbox policy. Default matches the adapter's workspace-write boundary.",
+			Category:     "permission",
+			DefaultValue: "workspace-write",
+			Options: []commandbridge.SelectValue{
+				{Value: "read-only", Name: "Read only"},
+				{Value: "workspace-write", Name: "Workspace write"},
+				{Value: "danger-full-access", Name: "Full access"},
+			},
+		},
 	}
 }
 
@@ -111,7 +123,7 @@ func PromptCommand(session commandbridge.Session, params runtimeacp.PromptParams
 	args := []string{
 		"exec",
 		"--cd", session.CWD,
-		"--sandbox", "workspace-write",
+		"--sandbox", selectedSandbox(session),
 		"--ask-for-approval", "never",
 		"--skip-git-repo-check",
 	}
@@ -171,4 +183,11 @@ func selectedConfig(session commandbridge.Session, id string) string {
 		return ""
 	}
 	return value
+}
+
+func selectedSandbox(session commandbridge.Session) string {
+	if value := selectedConfig(session, "sandbox"); value != "" {
+		return value
+	}
+	return "workspace-write"
 }

@@ -53,7 +53,7 @@ func TestNewCLISpecExposesLibraryContract(t *testing.T) {
 	if spec.Info.Name != codexadapter.Name || spec.Info.Version != "2.0.0" {
 		t.Fatalf("spec.Info = %#v", spec.Info)
 	}
-	if spec.Command == nil || spec.Command.BuildPrompt == nil || len(spec.Command.Options) != 2 || !spec.Command.IncludeTranscript {
+	if spec.Command == nil || spec.Command.BuildPrompt == nil || len(spec.Command.Options) != 3 || !spec.Command.IncludeTranscript {
 		t.Fatalf("command spec = %#v, want command-backed bridge with config options", spec.Command)
 	}
 	if spec.Doctor == nil || spec.Doctor.Binary != "codex" {
@@ -96,6 +96,7 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 		Config: map[string]string{
 			"model":            "gpt-5-codex",
 			"reasoning_effort": "high",
+			"sandbox":          "read-only",
 		},
 	}, runtimeacp.PromptParams{
 		Prompt: []runtimeacp.ContentBlock{{Type: "text", Text: "hello codex"}},
@@ -106,7 +107,7 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 	wantArgs := []string{
 		"exec",
 		"--cd", "/work",
-		"--sandbox", "workspace-write",
+		"--sandbox", "read-only",
 		"--ask-for-approval", "never",
 		"--skip-git-repo-check",
 		"--add-dir", "/extra",
