@@ -22,6 +22,10 @@
 
 ## Phase 3: Codex Runtime Bridge
 
+- use `acp-adapter-kit/commandbridge` for the first no-npm native path: one
+  lightweight ACP session per workspace, one `codex exec` process per prompt,
+  stdout forwarded as assistant text, and ACP cancel mapped to process
+  cancellation
 - use `acp-adapter-kit/process` for every subprocess boundary
 - use `acp-adapter-kit/runtimeproc` as the only process-backed runtime launcher
 - use `acp-adapter-kit/runtimejsonrpc` for newline-delimited JSON-RPC over
@@ -70,8 +74,9 @@
 - keep `runtimeacp.InitializeParams` hand-written for now because the generated
   SDK request emits `clientCapabilities.auth` when client capabilities are set,
   which would change the adapter's current initialize wire shape
-- choose a stable Codex integration boundary
-- implement auth/session/prompt/cancel/config/mcp/tool mappings
+- expand the native Codex integration boundary beyond `codex exec`
+- implement auth/session/prompt/cancel/config/mcp/tool mappings that are not
+  covered by the first command-backed path
 - port the edge cases recorded in `SOURCE_REVIEW.md`
 
 ## Phase 4: Release and Hecate Integration

@@ -2,13 +2,17 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/hecatehq/acp-adapter-kit/adaptercli"
+	"github.com/hecatehq/acp-adapter-kit/commandbridge"
+	adapterprocess "github.com/hecatehq/acp-adapter-kit/process"
 )
 
 func TestVersionFlag(t *testing.T) {
@@ -240,6 +244,88 @@ func TestRuntimeFlagsInheritCodexEnvironmentPolicy(t *testing.T) {
 	decodeAppResult(t, responses[0], &initialize)
 	if initialize.AgentInfo.Name != "app-helper-runtime" {
 		t.Fatalf("initialize agent name = %q, want app-helper-runtime", initialize.AgentInfo.Name)
+	}
+}
+
+func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	workdir := t.TempDir()
+	extraDir := t.TempDir()
+	input := strings.NewReader(strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"` + workdir + `","additionalDirectories":["` + extraDir + `"]}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"model","value":"gpt-5-codex"}}`,
+		`{"jsonrpc":"2.0","id":3,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"reasoning_effort","value":"high"}}`,
+		`{"jsonrpc":"2.0","id":4,"method":"session/prompt","params":{"sessionId":"session-1","prompt":[{"type":"text","text":"hello codex"}]}}`,
+	}, "\n") + "\n")
+	spec := adapterSpec(input, &stdout, &stderr)
+	spec.Command.NewID = func() string { return "session-1" }
+	spec.Command.Runner = commandbridge.RunnerFunc(func(_ context.Context, got adapterprocess.Spec) (adapterprocess.Result, error) {
+		wantArgs := []string{
+			"exec",
+			"--cd", workdir,
+			"--sandbox", "workspace-write",
+			"--ask-for-approval", "never",
+			"--skip-git-repo-check",
+			"--add-dir", extraDir,
+			"--model", "gpt-5-codex",
+			"--config", `model_reasoning_effort="high"`,
+			"hello codex",
+		}
+		if got.Command != "codex" || got.Dir != workdir || !reflect.DeepEqual(got.Args, wantArgs) {
+			t.Fatalf("process spec = %#v, want codex exec args %#v", got, wantArgs)
+		}
+		return adapterprocess.Result{Stdout: []byte("codex answer")}, nil
+	})
+
+	code := adaptercli.Run(nil, spec)
+	if code != 0 {
+		t.Fatalf("Run returned %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	responses := decodeAppResponses(t, stdout.Bytes())
+	if len(responses) != 5 {
+		t.Fatalf("got %d envelopes, want session/new, two config updates, assistant update, prompt result\n%s", len(responses), stdout.String())
+	}
+	var created struct {
+		SessionID     string `json:"sessionId"`
+		ConfigOptions []struct {
+			ID           string `json:"id"`
+			Category     string `json:"category"`
+			CurrentValue string `json:"currentValue"`
+		} `json:"configOptions"`
+	}
+	decodeAppResult(t, responses[0], &created)
+	if created.SessionID != "session-1" || len(created.ConfigOptions) != 2 {
+		t.Fatalf("created session = %#v, want id and two config options", created)
+	}
+	if created.ConfigOptions[0].ID != "model" || created.ConfigOptions[0].Category != "model" {
+		t.Fatalf("model option = %#v, want model category", created.ConfigOptions[0])
+	}
+	if created.ConfigOptions[1].ID != "reasoning_effort" || created.ConfigOptions[1].Category != "thought_level" {
+		t.Fatalf("reasoning option = %#v, want thought_level category", created.ConfigOptions[1])
+	}
+	if responses[3].Method != "session/update" {
+		t.Fatalf("fourth envelope method = %q, want session/update", responses[3].Method)
+	}
+	var update struct {
+		Update struct {
+			Content struct {
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"update"`
+	}
+	if err := json.Unmarshal(responses[3].Params, &update); err != nil {
+		t.Fatalf("decode update: %v", err)
+	}
+	if update.Update.Content.Text != "codex answer" {
+		t.Fatalf("assistant text = %q, want codex answer", update.Update.Content.Text)
+	}
+	var prompt struct {
+		StopReason string `json:"stopReason"`
+	}
+	decodeAppResult(t, responses[4], &prompt)
+	if prompt.StopReason != "end_turn" {
+		t.Fatalf("stop reason = %q, want end_turn", prompt.StopReason)
 	}
 }
 

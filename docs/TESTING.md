@@ -1,7 +1,9 @@
 # Testing
 
-This repository currently tests the adapter scaffold, not a complete Codex
-runtime bridge.
+This repository tests the adapter scaffold, the subprocess-backed ACP runtime
+bridge, and the first native Codex CLI command bridge. It does not yet cover a
+complete Codex replacement with persistent vendor sessions and tool/permission
+parity.
 
 ## Covered Today
 
@@ -119,8 +121,12 @@ runtime bridge.
 - root ACP runtime flags: opt-in subprocess-backed serving, deferred runtime
   startup with forwarded client initialize capabilities, required absolute
   runtime workdir, runtime argv passthrough, Codex-specific environment
-  allowlist inheritance, and default scaffold behavior when no runtime binary is
-  configured
+  allowlist inheritance, and runtime-flag precedence over the native command
+  bridge
+- root ACP native command bridge: session creation with Codex model/reasoning
+  config options, config updates, `codex exec` argv construction, additional
+  workspace directories, assistant text updates from command stdout, and prompt
+  completion
 - Coder ACP SDK compatibility guardrails for the adopted protocol primitives:
   JSON-RPC error shape, default initialize protocol version, and selected
   runtime ACP request JSON shapes
@@ -136,7 +142,8 @@ this one:
 - prompt streaming with assistant chunks and terminal prompt results
 - real vendor-runtime cancellation and no double-settle behavior
 - auth methods and auth-required errors
-- model/config option discovery and updates
+- model/config option discovery beyond the initial static command-backed
+  selectors
 - permission modes
 - shell, file, patch, web, MCP, image, plan, review, TODO, and goal tool
   mappings
@@ -159,6 +166,7 @@ Keep this repository's tests focused on Codex-specific adapter behavior:
 - scaffold `initialize` metadata and Codex capability flags;
 - `doctor` command defaults for the Codex binary and Codex environment list;
 - runtime flag wiring from Cobra into the shared runtime host;
+- command-backed `codex exec` argv construction and config-option mapping;
 - Codex-specific prompt, tool, permission, config, model, MCP, auth, and session
   mapping as those features land.
 
