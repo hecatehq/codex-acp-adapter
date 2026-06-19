@@ -26,6 +26,17 @@ func adapterSpec(stdin io.Reader, stdout io.Writer, stderr io.Writer) adaptercli
 		Stdin:  stdin,
 		Stdout: stdout,
 		Stderr: stderr,
+		Runtime: adaptercli.RuntimeSpec{
+			InheritEnv: []string{
+				"PATH",
+				"HOME",
+				"XDG_CONFIG_HOME",
+				"TMPDIR",
+				"CODEX_HOME",
+				"OPENAI_API_KEY",
+				"OPENAI_BASE_URL",
+			},
+		},
 		Doctor: &adaptercli.DoctorSpec{
 			Short:       "Check the local Codex runtime boundary",
 			Binary:      "codex",

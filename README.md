@@ -81,6 +81,10 @@ machine-readable output.
 
 The root ACP server can also launch an opt-in subprocess-backed runtime with
 `--runtime-binary`, `--runtime-workdir`, and repeated `--runtime-arg` flags.
+That runtime process receives only the Codex adapter's explicit environment
+allowlist (`PATH`, `HOME`, `XDG_CONFIG_HOME`, `TMPDIR`, `CODEX_HOME`,
+`OPENAI_API_KEY`, and `OPENAI_BASE_URL`); the parent environment is not
+inherited wholesale.
 Without `--runtime-binary`, the adapter keeps the scaffold handlers so the
 protocol shell remains safe to test before the real Codex boundary is enabled.
 
