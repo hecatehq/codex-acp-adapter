@@ -44,6 +44,8 @@ Implemented:
 - command-backed `session/list` metadata, `config_option_update`
   notifications for config changes, and `session_info_update` notifications
   when transcript metadata changes
+- command-backed `/review` advertisement and mapping to `codex review
+  --uncommitted`
 - Codex `exec --json` stream translation into ACP assistant text, reasoning,
   tool-call, and usage updates, plus generic command `tool_call` activity for
   the native Codex process
@@ -53,7 +55,8 @@ Not implemented yet:
 
 - vendor-specific durable/native persistent session semantics across adapter
   process restarts
-- complete vendor-specific permission/MCP/auth/slash-command mapping
+- complete vendor-specific permission/MCP/auth/slash-command mapping beyond
+  the adapter-owned `/review` command
 - runtime config/auth/model discovery
 - production signing/provenance for release artifacts
 

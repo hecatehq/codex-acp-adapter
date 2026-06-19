@@ -53,8 +53,11 @@ func TestNewCLISpecExposesLibraryContract(t *testing.T) {
 	if spec.Info.Name != codexadapter.Name || spec.Info.Version != "2.0.0" {
 		t.Fatalf("spec.Info = %#v", spec.Info)
 	}
-	if spec.Command == nil || spec.Command.BuildPrompt == nil || spec.Command.NewStreamParser == nil || len(spec.Command.Options) != 3 || !spec.Command.IncludeTranscript {
-		t.Fatalf("command spec = %#v, want command-backed bridge with config options", spec.Command)
+	if spec.Command == nil || spec.Command.BuildPrompt == nil || spec.Command.NewStreamParser == nil || len(spec.Command.Options) != 3 || len(spec.Command.Commands) != 1 || !spec.Command.IncludeTranscript {
+		t.Fatalf("command spec = %#v, want command-backed bridge with config options and review command", spec.Command)
+	}
+	if spec.Command.Commands[0].Name != "review" || spec.Command.Commands[0].InputHint == "" {
+		t.Fatalf("commands = %#v, want review command with input hint", spec.Command.Commands)
 	}
 	if spec.Doctor == nil || spec.Doctor.Binary != "codex" {
 		t.Fatalf("doctor spec = %#v, want codex doctor", spec.Doctor)
@@ -121,6 +124,54 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 	}
 }
 
+func TestPromptCommandBuildsCodexReview(t *testing.T) {
+	got, err := codexadapter.PromptCommand(commandbridge.Session{
+		CWD:                   "/work",
+		AdditionalDirectories: []string{"/extra"},
+		Config: map[string]string{
+			"model":            "gpt-5-codex",
+			"reasoning_effort": "high",
+			"sandbox":          "read-only",
+		},
+	}, runtimeacp.PromptParams{
+		Prompt: []runtimeacp.ContentBlock{{Type: "text", Text: "Previous conversation:\n\nUser:\nhello\n\nCurrent user request:\n/review focus on tests"}},
+	})
+	if err != nil {
+		t.Fatalf("PromptCommand: %v", err)
+	}
+	wantArgs := []string{
+		"review",
+		"--uncommitted",
+		"--config", `model="gpt-5-codex"`,
+		"--config", `model_reasoning_effort="high"`,
+		"focus on tests",
+	}
+	if got.Command != "codex" || got.Dir != "/work" || !reflect.DeepEqual(got.Args, wantArgs) {
+		t.Fatalf("process spec = %#v, want codex review args %#v", got, wantArgs)
+	}
+}
+
+func TestNewServerPublishesAvailableCommands(t *testing.T) {
+	client := acptest.NewClient(t, codexadapter.NewServer("test"))
+
+	responses := client.Send(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "session/new",
+		"params":  map[string]any{"cwd": t.TempDir()},
+	})
+	if len(responses) != 2 {
+		t.Fatalf("responses = %#v, want available command update + session response", responses)
+	}
+	update := decodeSessionUpdate(t, responses[0])
+	if update.Update.SessionUpdate != "available_commands_update" ||
+		len(update.Update.AvailableCommands) != 1 ||
+		update.Update.AvailableCommands[0].Name != "review" ||
+		update.Update.AvailableCommands[0].Input.Unstructured.Hint != "optional review instructions" {
+		t.Fatalf("available commands = %#v, want review command", update)
+	}
+}
+
 func TestNewServerStreamsNativeCodexOutput(t *testing.T) {
 	installFakeCommand(t, "codex", `
 if [ "$1" != "exec" ]; then
@@ -133,14 +184,22 @@ printf '{"method":"item/reasoning/textDelta","params":{"item_id":"thought-1","de
 printf '{"method":"item/completed","params":{"item":{"type":"agent_message","id":"msg-1","text":"chunk one chunk two"}}}\n'
 printf '{"method":"turn/completed","params":{"usage":{"input_tokens":10,"output_tokens":5,"context_window":100}}}\n'
 printf '{"method":"item/completed","params":{"item":{"type":"local_shell_call","id":"tool-1","status":"completed","stdout":"ok"}}}\n'
-`)
+	`)
 	client := acptest.NewClient(t, codexadapter.NewServer("test"))
 	client.Request("initialize", map[string]any{})
-	created := client.Request("session/new", map[string]any{"cwd": t.TempDir()})
+	createdResponses := client.Send(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      2,
+		"method":  "session/new",
+		"params":  map[string]any{"cwd": t.TempDir()},
+	})
+	if len(createdResponses) != 2 {
+		t.Fatalf("create responses = %#v, want available commands + session response", createdResponses)
+	}
 	var session struct {
 		SessionID string `json:"sessionId"`
 	}
-	created.ResultInto(t, &session)
+	createdResponses[1].ResultInto(t, &session)
 	if session.SessionID == "" {
 		t.Fatal("session id is empty")
 	}
@@ -272,16 +331,24 @@ func TestCodexStreamParserMapsJSONL(t *testing.T) {
 
 type sessionUpdate struct {
 	Update struct {
-		SessionUpdate string          `json:"sessionUpdate"`
-		ToolCallID    string          `json:"toolCallId"`
-		Title         string          `json:"title"`
-		Kind          string          `json:"kind"`
-		Status        string          `json:"status"`
-		RawInput      map[string]any  `json:"rawInput"`
-		Used          int             `json:"used"`
-		Size          int             `json:"size"`
-		Content       json.RawMessage `json:"content"`
-		UpdatedAt     string          `json:"updatedAt"`
+		SessionUpdate     string          `json:"sessionUpdate"`
+		ToolCallID        string          `json:"toolCallId"`
+		Title             string          `json:"title"`
+		Kind              string          `json:"kind"`
+		Status            string          `json:"status"`
+		RawInput          map[string]any  `json:"rawInput"`
+		Used              int             `json:"used"`
+		Size              int             `json:"size"`
+		Content           json.RawMessage `json:"content"`
+		UpdatedAt         string          `json:"updatedAt"`
+		AvailableCommands []struct {
+			Name  string `json:"name"`
+			Input struct {
+				Unstructured struct {
+					Hint string `json:"hint"`
+				} `json:"unstructured"`
+			} `json:"input"`
+		} `json:"availableCommands"`
 	} `json:"update"`
 }
 

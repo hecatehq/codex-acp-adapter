@@ -126,6 +126,7 @@ parity.
   bridge
 - root ACP native command bridge: session creation with Codex model/reasoning
   config options, sandbox config option, config updates, `codex exec --json`
+  argv construction, `/review` advertisement plus `codex review --uncommitted`
   argv construction, additional workspace directories, streamed JSONL parsing
   into ACP assistant text, reasoning, tool-call, and usage updates, generic
   command `tool_call` activity for the outer Codex process, in-memory
@@ -151,7 +152,8 @@ ACP bridge:
   selectors
 - provider-native permission request/event mapping beyond the selected Codex
   sandbox mode
-- shell, file, patch, web, MCP, image, plan, review, TODO, and goal tool
+- shell, file, patch, web, MCP, image, plan, TODO, goal, and deeper
+  provider-native review tool
   mappings
 - permission requests, late permission responses, and rejected/denied tools
 - MCP server merging, vendor MCP connection lifecycle semantics, and MCP tool

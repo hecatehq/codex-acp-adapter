@@ -6,6 +6,7 @@ package codexadapter
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/hecatehq/acp-adapter-kit/acp"
 	"github.com/hecatehq/acp-adapter-kit/adaptercli"
@@ -62,10 +63,19 @@ func Options() []acp.Option {
 func CommandSpec() *commandbridge.Spec {
 	return &commandbridge.Spec{
 		Options:           ConfigOptions(),
+		Commands:          AvailableCommands(),
 		IncludeTranscript: true,
 		BuildPrompt:       PromptCommand,
 		NewStreamParser:   NewStreamParser,
 	}
+}
+
+func AvailableCommands() []commandbridge.AvailableCommand {
+	return []commandbridge.AvailableCommand{{
+		Name:        "review",
+		Description: "Review uncommitted workspace changes with Codex.",
+		InputHint:   "optional review instructions",
+	}}
 }
 
 func ConfigOptions() []commandbridge.SelectConfigOption {
@@ -121,6 +131,9 @@ func PromptCommand(session commandbridge.Session, params runtimeacp.PromptParams
 	if session.CWD == "" {
 		return adapterprocess.Spec{}, fmt.Errorf("session cwd is required")
 	}
+	if instructions, ok := reviewCommandInstructions(text); ok {
+		return codexReviewCommand(session, instructions), nil
+	}
 	args := []string{
 		"exec",
 		"--cd", session.CWD,
@@ -146,6 +159,43 @@ func PromptCommand(session commandbridge.Session, params runtimeacp.PromptParams
 		Args:    args,
 		Dir:     session.CWD,
 	}, nil
+}
+
+func codexReviewCommand(session commandbridge.Session, instructions string) adapterprocess.Spec {
+	args := []string{
+		"review",
+		"--uncommitted",
+	}
+	if model := selectedConfig(session, "model"); model != "" {
+		args = append(args, "--config", fmt.Sprintf("model=%q", model))
+	}
+	if effort := selectedConfig(session, "reasoning_effort"); effort != "" {
+		args = append(args, "--config", fmt.Sprintf("model_reasoning_effort=%q", effort))
+	}
+	if instructions = strings.TrimSpace(instructions); instructions != "" {
+		args = append(args, instructions)
+	}
+	return adapterprocess.Spec{
+		Command: "codex",
+		Args:    args,
+		Dir:     session.CWD,
+	}
+}
+
+func reviewCommandInstructions(text string) (string, bool) {
+	current := strings.TrimSpace(currentPromptText(text))
+	if current != "/review" && !strings.HasPrefix(current, "/review ") && !strings.HasPrefix(current, "/review\n") && !strings.HasPrefix(current, "/review\t") {
+		return "", false
+	}
+	return strings.TrimSpace(strings.TrimPrefix(current, "/review")), true
+}
+
+func currentPromptText(text string) string {
+	const marker = "Current user request:\n"
+	if idx := strings.LastIndex(text, marker); idx >= 0 {
+		return text[idx+len(marker):]
+	}
+	return text
 }
 
 func RuntimeEnv() []string {
