@@ -41,14 +41,16 @@ Implemented:
 - ACP model, reasoning, and sandbox config options for the command-backed path
 - in-memory command-backed session load/resume/fork plus bounded transcript
   replay for multi-turn continuity while the adapter process is alive
-- streamed command stdout chunks and generic command `tool_call` activity
+- Codex `exec --json` stream translation into ACP assistant text, reasoning,
+  tool-call, and usage updates, plus generic command `tool_call` activity for
+  the native Codex process
 - CI and tag-driven release packaging for unsigned alpha binaries
 
 Not implemented yet:
 
 - vendor-specific durable/native persistent session semantics across adapter
   process restarts
-- vendor-specific prompt/tool/permission mapping
+- complete vendor-specific permission/MCP/auth/slash-command mapping
 - runtime config/auth/model discovery
 - production signing/provenance for release artifacts
 
@@ -97,14 +99,15 @@ machine-readable output.
 By default, the root ACP server owns lightweight ACP sessions and runs each
 prompt through `codex exec` in the session workspace. The command-backed path
 exposes ACP config options for model, reasoning effort, and Codex sandbox mode,
-passes only
-provider-specific environment variables through the shared process runner, and
-converts command stdout into ACP assistant text while emitting a generic
-`tool_call` activity for the native Codex command execution. The session state
-is in-memory: `session/load`, `session/resume`, and `session/fork` work while
-the adapter process is alive, and later prompts receive a bounded transcript
-prelude so command-backed turns keep conversational context without claiming
-vendor-native durable history.
+passes only provider-specific environment variables through the shared process
+runner, and runs Codex with `exec --json`. Known Codex JSONL events are
+translated into ACP assistant text, reasoning, tool-call, and usage updates;
+unknown JSONL events are ignored rather than shown as raw chat text. A generic
+`tool_call` still wraps the native Codex process execution so hosts can show the
+outer command boundary. The session state is in-memory: `session/load`,
+`session/resume`, and `session/fork` work while the adapter process is alive,
+and later prompts receive a bounded transcript prelude so command-backed turns
+keep conversational context without claiming vendor-native durable history.
 
 The root ACP server can also launch an explicit subprocess-backed ACP runtime
 with `--runtime-binary`, `--runtime-workdir`, and repeated `--runtime-arg`

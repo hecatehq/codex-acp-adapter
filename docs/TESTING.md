@@ -124,10 +124,10 @@ parity.
   allowlist inheritance, and runtime-flag precedence over the native command
   bridge
 - root ACP native command bridge: session creation with Codex model/reasoning
-  config options, sandbox config option, config updates, `codex exec` argv
-  construction, additional workspace directories, assistant text updates from
-  command stdout, streamed stdout chunks, generic command `tool_call` activity,
-  in-memory
+  config options, sandbox config option, config updates, `codex exec --json`
+  argv construction, additional workspace directories, streamed JSONL parsing
+  into ACP assistant text, reasoning, tool-call, and usage updates, generic
+  command `tool_call` activity for the outer Codex process, in-memory
   load/resume/fork capability, bounded transcript replay for later command
   prompts, and prompt completion
 - Coder ACP SDK compatibility guardrails for the adopted protocol primitives:
@@ -143,7 +143,7 @@ ACP bridge:
 
 - vendor-specific durable persistent session storage and restore semantics
   across adapter process restarts
-- terminal prompt results beyond command stdout streaming
+- terminal prompt results beyond parsed command stream updates
 - real vendor-runtime cancellation and no double-settle behavior
 - auth methods and auth-required errors
 - model/config option discovery beyond the initial static command-backed

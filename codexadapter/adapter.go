@@ -64,6 +64,7 @@ func CommandSpec() *commandbridge.Spec {
 		Options:           ConfigOptions(),
 		IncludeTranscript: true,
 		BuildPrompt:       PromptCommand,
+		NewStreamParser:   NewStreamParser,
 	}
 }
 
@@ -126,6 +127,7 @@ func PromptCommand(session commandbridge.Session, params runtimeacp.PromptParams
 		"--sandbox", selectedSandbox(session),
 		"--ask-for-approval", "never",
 		"--skip-git-repo-check",
+		"--json",
 	}
 	for _, dir := range session.AdditionalDirectories {
 		if dir != "" {

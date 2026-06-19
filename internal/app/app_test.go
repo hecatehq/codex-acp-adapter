@@ -268,6 +268,7 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 			"--sandbox", "read-only",
 			"--ask-for-approval", "never",
 			"--skip-git-repo-check",
+			"--json",
 			"--add-dir", extraDir,
 			"--model", "gpt-5-codex",
 			"--config", `model_reasoning_effort="high"`,

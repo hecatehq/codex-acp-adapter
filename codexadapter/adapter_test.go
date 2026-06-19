@@ -53,7 +53,7 @@ func TestNewCLISpecExposesLibraryContract(t *testing.T) {
 	if spec.Info.Name != codexadapter.Name || spec.Info.Version != "2.0.0" {
 		t.Fatalf("spec.Info = %#v", spec.Info)
 	}
-	if spec.Command == nil || spec.Command.BuildPrompt == nil || len(spec.Command.Options) != 3 || !spec.Command.IncludeTranscript {
+	if spec.Command == nil || spec.Command.BuildPrompt == nil || spec.Command.NewStreamParser == nil || len(spec.Command.Options) != 3 || !spec.Command.IncludeTranscript {
 		t.Fatalf("command spec = %#v, want command-backed bridge with config options", spec.Command)
 	}
 	if spec.Doctor == nil || spec.Doctor.Binary != "codex" {
@@ -110,6 +110,7 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 		"--sandbox", "read-only",
 		"--ask-for-approval", "never",
 		"--skip-git-repo-check",
+		"--json",
 		"--add-dir", "/extra",
 		"--model", "gpt-5-codex",
 		"--config", `model_reasoning_effort="high"`,
@@ -126,9 +127,12 @@ if [ "$1" != "exec" ]; then
   echo "unexpected command: $*" >&2
   exit 64
 fi
-printf 'chunk one '
+printf '{"method":"item/started","params":{"item":{"type":"local_shell_call","id":"tool-1","command":"go test ./..."}}}\n'
 sleep 0.05
-printf 'chunk two'
+printf '{"method":"item/reasoning/textDelta","params":{"item_id":"thought-1","delta":"checking"}}\n'
+printf '{"method":"item/completed","params":{"item":{"type":"agent_message","id":"msg-1","text":"chunk one chunk two"}}}\n'
+printf '{"method":"turn/completed","params":{"usage":{"input_tokens":10,"output_tokens":5,"context_window":100}}}\n'
+printf '{"method":"item/completed","params":{"item":{"type":"local_shell_call","id":"tool-1","status":"completed","stdout":"ok"}}}\n'
 `)
 	client := acptest.NewClient(t, codexadapter.NewServer("test"))
 	client.Request("initialize", map[string]any{})
@@ -161,21 +165,37 @@ printf 'chunk two'
 		start.Update.RawInput["command"] == "" {
 		t.Fatalf("tool start = %#v, want native Codex command metadata", start)
 	}
-	var streamed strings.Builder
-	for i, response := range responses[1 : len(responses)-2] {
-		update := decodeSessionUpdate(t, response)
-		if update.Update.SessionUpdate != "agent_message_chunk" {
-			t.Fatalf("response %d update = %#v, want agent_message_chunk", i, update.Update)
-		}
-		streamed.WriteString(decodeChunkText(t, update.Update.Content))
+	innerStart := decodeSessionUpdate(t, responses[1])
+	if innerStart.Update.SessionUpdate != "tool_call" ||
+		innerStart.Update.ToolCallID != "tool-1" ||
+		innerStart.Update.Kind != "execute" ||
+		innerStart.Update.Status != "in_progress" {
+		t.Fatalf("inner tool start = %#v, want parsed Codex tool start", innerStart)
 	}
-	if streamed.String() != "chunk one chunk two" {
-		t.Fatalf("streamed text = %q, want chunked command stdout", streamed.String())
+	thought := decodeSessionUpdate(t, responses[2])
+	if thought.Update.SessionUpdate != "agent_thought_chunk" || decodeChunkText(t, thought.Update.Content) != "checking" {
+		t.Fatalf("thought = %#v, want parsed reasoning chunk", thought)
+	}
+	message := decodeSessionUpdate(t, responses[3])
+	if message.Update.SessionUpdate != "agent_message_chunk" || decodeChunkText(t, message.Update.Content) != "chunk one chunk two" {
+		t.Fatalf("message = %#v, want parsed Codex answer", message)
+	}
+	usage := decodeSessionUpdate(t, responses[4])
+	if usage.Update.SessionUpdate != "usage_update" || usage.Update.Used != 15 || usage.Update.Size != 100 {
+		t.Fatalf("usage = %#v, want parsed Codex usage", usage)
+	}
+	innerFinish := decodeSessionUpdate(t, responses[5])
+	if innerFinish.Update.SessionUpdate != "tool_call_update" ||
+		innerFinish.Update.ToolCallID != "tool-1" ||
+		innerFinish.Update.Status != "completed" ||
+		!strings.Contains(string(innerFinish.Update.Content), "ok") {
+		t.Fatalf("inner tool finish = %#v, want parsed Codex tool finish", innerFinish)
 	}
 	finish := decodeSessionUpdate(t, responses[len(responses)-2])
 	if finish.Update.SessionUpdate != "tool_call_update" ||
 		finish.Update.ToolCallID != start.Update.ToolCallID ||
-		finish.Update.Status != "completed" {
+		finish.Update.Status != "completed" ||
+		len(finish.Update.Content) != 0 {
 		t.Fatalf("tool finish = %#v, want completed native Codex command", finish)
 	}
 	var promptResult struct {
@@ -196,13 +216,64 @@ func TestPromptCommandRequiresWorkspace(t *testing.T) {
 	}
 }
 
+func TestCodexStreamParserMapsJSONL(t *testing.T) {
+	parser := codexadapter.NewStreamParser(commandbridge.Session{}, runtimeacp.PromptParams{})
+	chunks := []string{
+		`{"method":"item/started","params":{"item":{"type":"apply_patch","id":"patch-1","title":"Apply patch","input":{"path":"main.go"}}}}` + "\n",
+		`{"method":"item/reasoning/summaryTextDelta","params":{"item_id":"reason-1","delta":"thinking"}}` + "\n",
+		`{"method":"item/completed","params":{"item":{"type":"agent_message","id":"msg-1","content":[{"type":"output_text","text":"done"}]}}}` + "\n",
+		`{"method":"turn/completed","params":{"usage":{"input_tokens":2,"cached_input_tokens":3,"output_tokens":5,"reasoning_output_tokens":7,"context_window":1000}}}` + "\n",
+		`{"method":"item/completed","params":{"item":{"type":"apply_patch","id":"patch-1","status":"completed","result":"patched"}}}` + "\n",
+	}
+	var events []commandbridge.StreamEvent
+	for _, chunk := range chunks {
+		parsed, err := parser.Parse([]byte(chunk))
+		if err != nil {
+			t.Fatalf("Parse returned error: %v", err)
+		}
+		events = append(events, parsed...)
+	}
+	flushed, err := parser.Flush()
+	if err != nil {
+		t.Fatalf("Flush returned error: %v", err)
+	}
+	events = append(events, flushed...)
+	if len(events) != 5 {
+		t.Fatalf("events len = %d, want 5: %#v", len(events), events)
+	}
+	if events[0].Update["sessionUpdate"] != "tool_call" ||
+		events[0].Update["toolCallId"] != "patch-1" ||
+		events[0].Update["kind"] != "edit" {
+		t.Fatalf("tool start = %#v, want edit tool start", events[0].Update)
+	}
+	if events[1].Update["sessionUpdate"] != "agent_thought_chunk" {
+		t.Fatalf("thought = %#v, want thought chunk", events[1].Update)
+	}
+	if events[2].Update["sessionUpdate"] != "agent_message_chunk" || parser.Transcript() != "done" {
+		t.Fatalf("message = %#v transcript=%q, want answer transcript", events[2].Update, parser.Transcript())
+	}
+	if events[3].Update["sessionUpdate"] != "usage_update" ||
+		events[3].Update["used"] != 17 ||
+		events[3].Update["size"] != 1000 {
+		t.Fatalf("usage = %#v, want summed usage", events[3].Update)
+	}
+	if events[4].Update["sessionUpdate"] != "tool_call_update" ||
+		events[4].Update["toolCallId"] != "patch-1" ||
+		events[4].Update["status"] != "completed" {
+		t.Fatalf("tool finish = %#v, want completed tool", events[4].Update)
+	}
+}
+
 type sessionUpdate struct {
 	Update struct {
 		SessionUpdate string          `json:"sessionUpdate"`
 		ToolCallID    string          `json:"toolCallId"`
 		Title         string          `json:"title"`
+		Kind          string          `json:"kind"`
 		Status        string          `json:"status"`
 		RawInput      map[string]any  `json:"rawInput"`
+		Used          int             `json:"used"`
+		Size          int             `json:"size"`
 		Content       json.RawMessage `json:"content"`
 	} `json:"update"`
 }
