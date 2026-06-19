@@ -191,12 +191,18 @@ printf '{"method":"item/completed","params":{"item":{"type":"local_shell_call","
 		!strings.Contains(string(innerFinish.Update.Content), "ok") {
 		t.Fatalf("inner tool finish = %#v, want parsed Codex tool finish", innerFinish)
 	}
-	finish := decodeSessionUpdate(t, responses[len(responses)-2])
+	finish := decodeSessionUpdate(t, responses[len(responses)-3])
 	if finish.Update.SessionUpdate != "tool_call_update" ||
 		finish.Update.ToolCallID != start.Update.ToolCallID ||
 		finish.Update.Status != "completed" ||
 		len(finish.Update.Content) != 0 {
 		t.Fatalf("tool finish = %#v, want completed native Codex command", finish)
+	}
+	info := decodeSessionUpdate(t, responses[len(responses)-2])
+	if info.Update.SessionUpdate != "session_info_update" ||
+		info.Update.Title != "hello" ||
+		info.Update.UpdatedAt == "" {
+		t.Fatalf("session info = %#v, want transcript metadata", info)
 	}
 	var promptResult struct {
 		StopReason string `json:"stopReason"`
@@ -275,6 +281,7 @@ type sessionUpdate struct {
 		Used          int             `json:"used"`
 		Size          int             `json:"size"`
 		Content       json.RawMessage `json:"content"`
+		UpdatedAt     string          `json:"updatedAt"`
 	} `json:"update"`
 }
 
