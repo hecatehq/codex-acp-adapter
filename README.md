@@ -56,6 +56,13 @@ and fake-runtime test code lives in
 focused on the Codex-specific CLI boundary, doctor defaults, docs, release
 workflow, and vendor behavior.
 
+The binary remains the primary integration mode. Hosts that need an embedded
+adapter can import `github.com/hecatehq/codex-acp-adapter/codexadapter` to build
+the same ACP server, info/options, CLI spec, config options, environment
+allowlists, and Codex prompt command without shelling out to
+`codex-acp-adapter`. The embedded path still launches the underlying `codex` CLI
+for prompts; it only removes the extra adapter process boundary.
+
 ```sh
 make release-check
 make snapshot
