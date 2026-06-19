@@ -45,6 +45,30 @@ func TestNewCLISpecExposesLibraryContract(t *testing.T) {
 	}
 }
 
+func TestPromptCommandUsesNativeCodexCLIOnly(t *testing.T) {
+	got, err := codexadapter.PromptCommand(commandbridge.Session{
+		CWD: "/work",
+	}, runtimeacp.PromptParams{
+		Prompt: []runtimeacp.ContentBlock{{Type: "text", Text: "hello codex"}},
+	})
+	if err != nil {
+		t.Fatalf("PromptCommand: %v", err)
+	}
+	assertNoPackageRunnerCommand(t, got.Command)
+	if got.Command != "codex" {
+		t.Fatalf("process command = %q, want native codex CLI", got.Command)
+	}
+
+	spec := codexadapter.NewCLISpec("2.0.0", nil, nil, nil)
+	if spec.Doctor == nil {
+		t.Fatal("doctor spec is nil")
+	}
+	assertNoPackageRunnerCommand(t, spec.Doctor.Binary)
+	if spec.Doctor.Binary != "codex" {
+		t.Fatalf("doctor binary = %q, want native codex CLI", spec.Doctor.Binary)
+	}
+}
+
 func TestPromptCommandBuildsCodexExec(t *testing.T) {
 	got, err := codexadapter.PromptCommand(commandbridge.Session{
 		CWD:                   "/work",
@@ -81,5 +105,13 @@ func TestPromptCommandRequiresWorkspace(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "session cwd is required") {
 		t.Fatalf("PromptCommand error = %v, want cwd required", err)
+	}
+}
+
+func assertNoPackageRunnerCommand(t testing.TB, command string) {
+	t.Helper()
+	switch command {
+	case "npx", "npm", "node", "bun", "sh", "bash", "zsh", "cmd", "powershell", "pwsh":
+		t.Fatalf("command = %q, want fixed native CLI without package runner or shell", command)
 	}
 }

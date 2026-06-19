@@ -135,8 +135,8 @@ parity.
 
 ## Not Covered Yet
 
-These must be tested before Hecate switches from the current Codex ACP adapter to
-this one:
+These must be tested before Hecate uses this as the default production Codex
+ACP bridge:
 
 - vendor-specific persistent session storage and restore semantics
 - prompt streaming with assistant chunks and terminal prompt results

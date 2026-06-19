@@ -3,17 +3,17 @@
 Neutral Go ACP adapter for Codex-compatible coding agents.
 
 This repository is an alpha Go ACP adapter for Codex-compatible coding agents.
-It is intended to replace runtime npm bridge launchers with a small, auditable
-binary that speaks ACP over stdio. The adapter can run Codex CLI prompts through
-its native command bridge, but full parity with the previous Codex ACP adapter
-is still in progress.
+It runs as a small, auditable binary that speaks ACP over stdio. The adapter can
+run Codex CLI prompts through its native command bridge, but full parity with
+the previous Codex ACP adapter is still in progress.
 
 ## Goals
 
 - Speak standard Agent Client Protocol over stdio.
 - Keep the adapter independent from Hecate internals.
-- Avoid runtime `npx`, shell wrappers, and broad environment inheritance.
-- Preserve the important behavior exposed by the current Codex ACP adapter:
+- Avoid package-manager launchers, shell wrappers, and broad environment
+  inheritance.
+- Preserve the important behavior exposed by the previous Codex ACP adapter:
   sessions, auth, model/config options, permission requests, MCP servers,
   tool updates, terminal output, slash commands, review/init workflows, and
   cancellation.
@@ -26,7 +26,7 @@ Implemented:
 - stdlib-only JSON-RPC/NDJSON ACP transport scaffold
 - `initialize` response with adapter metadata
 - structured errors for unimplemented methods
-- source-review notes for the current npm/native adapter stack
+- source-review notes for the previous adapter behavior
 - unit tests for the protocol scaffold
 - `doctor` command for probing the local Codex binary boundary
 - process-backed runtime launcher seam
@@ -74,7 +74,8 @@ go run ./cmd/codex-acp-adapter doctor
 ```
 
 See [docs/TESTING.md](docs/TESTING.md) for what is covered today and what must
-be covered before this adapter can replace the current Codex ACP bridge.
+be covered before this adapter can be used as the default production Codex ACP
+bridge.
 See [docs/RELEASE.md](docs/RELEASE.md) for the tag-driven release flow.
 
 ## CLI Contract
@@ -106,6 +107,5 @@ path and are mostly useful for protocol parity testing.
 ## Source Review
 
 Before implementing the real bridge, read [docs/SOURCE_REVIEW.md](docs/SOURCE_REVIEW.md).
-It records the behavior found in the current npm package and upstream adapter
-source that this project needs to preserve or deliberately replace.
-ACP adapter for running Codex-compatible coding agents over stdio
+It records historical package/source behavior that this project needs to
+preserve or deliberately replace.
