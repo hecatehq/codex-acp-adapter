@@ -24,8 +24,8 @@
 
 - use `acp-adapter-kit/commandbridge` for the first native direct-CLI path:
   one lightweight ACP session per workspace, one `codex exec` process per
-  prompt, stdout forwarded as assistant text, and ACP cancel mapped to process
-  cancellation
+  prompt, optional `--search` when the ACP web-search config is enabled, stdout
+  forwarded as assistant text, and ACP cancel mapped to process cancellation
 - use `acp-adapter-kit/process` for every subprocess boundary
 - use `acp-adapter-kit/runtimeproc` as the only process-backed runtime launcher
 - use `acp-adapter-kit/runtimejsonrpc` for newline-delimited JSON-RPC over

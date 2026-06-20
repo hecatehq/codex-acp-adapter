@@ -120,6 +120,17 @@ func ConfigOptions() []commandbridge.SelectConfigOption {
 				{Value: "danger-full-access", Name: "Full access"},
 			},
 		},
+		{
+			ID:           "web_search",
+			Name:         "Web search",
+			Description:  "Enable Codex CLI live web search for normal exec turns.",
+			Category:     "tool",
+			DefaultValue: "disabled",
+			Options: []commandbridge.SelectValue{
+				{Value: "disabled", Name: "Disabled"},
+				{Value: "enabled", Name: "Enabled"},
+			},
+		},
 	}
 }
 
@@ -152,6 +163,9 @@ func PromptCommand(session commandbridge.Session, params runtimeacp.PromptParams
 	}
 	if effort := selectedConfig(session, "reasoning_effort"); effort != "" {
 		args = append(args, "--config", fmt.Sprintf("model_reasoning_effort=%q", effort))
+	}
+	if selectedConfig(session, "web_search") == "enabled" {
+		args = append(args, "--search")
 	}
 	args = append(args, text)
 	return adapterprocess.Spec{

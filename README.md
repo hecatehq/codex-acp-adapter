@@ -38,7 +38,8 @@ Implemented:
 - protocol forwarding for session load, resume, fork, list, delete, and
   MCP-over-ACP message payloads
 - command-backed native Codex CLI session path using `codex exec`
-- ACP model, reasoning, and sandbox config options for the command-backed path
+- ACP model, reasoning, sandbox, and web-search config options for the
+  command-backed path
 - in-memory command-backed session load/resume/fork plus bounded transcript
   replay for multi-turn continuity while the adapter process is alive
 - command-backed `session/list` metadata, `config_option_update`
@@ -104,9 +105,10 @@ machine-readable output.
 
 By default, the root ACP server owns lightweight ACP sessions and runs each
 prompt through `codex exec` in the session workspace. The command-backed path
-exposes ACP config options for model, reasoning effort, and Codex sandbox mode,
-passes only provider-specific environment variables through the shared process
-runner, and runs Codex with `exec --json`. Known Codex JSONL events are
+exposes ACP config options for model, reasoning effort, Codex sandbox mode, and
+Codex live web search, passes only provider-specific environment variables
+through the shared process runner, and runs Codex with `exec --json`. Known
+Codex JSONL events are
 translated into ACP assistant text, reasoning, tool-call, and usage updates;
 unknown JSONL events are ignored rather than shown as raw chat text. A generic
 `tool_call` still wraps the native Codex process execution so hosts can show the

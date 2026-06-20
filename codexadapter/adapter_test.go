@@ -53,7 +53,7 @@ func TestNewCLISpecExposesLibraryContract(t *testing.T) {
 	if spec.Info.Name != codexadapter.Name || spec.Info.Version != "2.0.0" {
 		t.Fatalf("spec.Info = %#v", spec.Info)
 	}
-	if spec.Command == nil || spec.Command.BuildPrompt == nil || spec.Command.NewStreamParser == nil || len(spec.Command.Options) != 3 || len(spec.Command.Commands) != 1 || !spec.Command.IncludeTranscript {
+	if spec.Command == nil || spec.Command.BuildPrompt == nil || spec.Command.NewStreamParser == nil || len(spec.Command.Options) != 4 || len(spec.Command.Commands) != 1 || !spec.Command.IncludeTranscript {
 		t.Fatalf("command spec = %#v, want command-backed bridge with config options and review command", spec.Command)
 	}
 	if spec.Command.Commands[0].Name != "review" || spec.Command.Commands[0].InputHint == "" {
@@ -100,6 +100,7 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 			"model":            "gpt-5-codex",
 			"reasoning_effort": "high",
 			"sandbox":          "read-only",
+			"web_search":       "enabled",
 		},
 	}, runtimeacp.PromptParams{
 		Prompt: []runtimeacp.ContentBlock{{Type: "text", Text: "hello codex"}},
@@ -117,6 +118,7 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 		"--add-dir", "/extra",
 		"--model", "gpt-5-codex",
 		"--config", `model_reasoning_effort="high"`,
+		"--search",
 		"hello codex",
 	}
 	if got.Command != "codex" || got.Dir != "/work" || !reflect.DeepEqual(got.Args, wantArgs) {
@@ -132,6 +134,7 @@ func TestPromptCommandBuildsCodexReview(t *testing.T) {
 			"model":            "gpt-5-codex",
 			"reasoning_effort": "high",
 			"sandbox":          "read-only",
+			"web_search":       "enabled",
 		},
 	}, runtimeacp.PromptParams{
 		Prompt: []runtimeacp.ContentBlock{{Type: "text", Text: "Previous conversation:\n\nUser:\nhello\n\nCurrent user request:\n/review focus on tests"}},

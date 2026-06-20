@@ -125,13 +125,13 @@ parity.
   allowlist inheritance, and runtime-flag precedence over the native command
   bridge
 - root ACP native command bridge: session creation with Codex model/reasoning
-  config options, sandbox config option, config updates, `codex exec --json`
-  argv construction, `/review` advertisement plus `codex review --uncommitted`
-  argv construction, additional workspace directories, streamed JSONL parsing
-  into ACP assistant text, reasoning, tool-call, and usage updates, generic
-  command `tool_call` activity for the outer Codex process, in-memory
-  load/resume/fork capability, bounded transcript replay for later command
-  prompts, and prompt completion
+  config options, sandbox config option, web-search config option, config
+  updates, `codex exec --json` / `--search` argv construction, `/review`
+  advertisement plus `codex review --uncommitted` argv construction, additional
+  workspace directories, streamed JSONL parsing into ACP assistant text,
+  reasoning, tool-call, and usage updates, generic command `tool_call` activity
+  for the outer Codex process, in-memory load/resume/fork capability, bounded
+  transcript replay for later command prompts, and prompt completion
 - Coder ACP SDK compatibility guardrails for the adopted protocol primitives:
   JSON-RPC error shape, default initialize protocol version, and selected
   runtime ACP request JSON shapes
