@@ -256,6 +256,9 @@ func CommandAuthRequired(result adapterprocess.Result, err error) bool {
 		"please login",
 		"run codex login",
 		"codex login",
+		"401 unauthorized",
+		"missing bearer",
+		"basic authentication",
 		"openai_api_key",
 		"api key",
 	} {
