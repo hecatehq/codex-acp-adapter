@@ -77,6 +77,9 @@
   SDK request emits `clientCapabilities.auth` when client capabilities are set,
   which would change the adapter's current initialize wire shape
 - expand the native Codex integration boundary beyond `codex exec`
+- keep adapter-owned slash commands explicit: `/review` maps to Codex's native
+  `review --uncommitted` command, `/init` stays on the normal `codex exec`
+  prompt path, and additional commands need parity tests before being exposed
 - implement auth/session/prompt/cancel/config/tool mappings, plus native MCP
   lifecycle and tool-approval mappings, that are not covered by the first
   command-backed path

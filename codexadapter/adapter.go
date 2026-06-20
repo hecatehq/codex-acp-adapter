@@ -74,11 +74,18 @@ func CommandSpec() *commandbridge.Spec {
 }
 
 func AvailableCommands() []commandbridge.AvailableCommand {
-	return []commandbridge.AvailableCommand{{
-		Name:        "review",
-		Description: "Review uncommitted workspace changes with Codex.",
-		InputHint:   "optional review instructions",
-	}}
+	return []commandbridge.AvailableCommand{
+		{
+			Name:        "review",
+			Description: "Review uncommitted workspace changes with Codex.",
+			InputHint:   "optional review instructions",
+		},
+		{
+			Name:        "init",
+			Description: "Ask Codex to inspect the workspace and create or update agent instructions.",
+			InputHint:   "optional instruction focus",
+		},
+	}
 }
 
 func ConfigOptions() []commandbridge.SelectConfigOption {

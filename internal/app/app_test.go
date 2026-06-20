@@ -293,9 +293,10 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 	}
 	commands := decodeAppUpdate(t, responses[0])
 	if commands.Update.SessionUpdate != "available_commands_update" ||
-		len(commands.Update.AvailableCommands) != 1 ||
-		commands.Update.AvailableCommands[0].Name != "review" {
-		t.Fatalf("available commands = %#v, want review command", commands)
+		len(commands.Update.AvailableCommands) != 2 ||
+		commands.Update.AvailableCommands[0].Name != "review" ||
+		commands.Update.AvailableCommands[1].Name != "init" {
+		t.Fatalf("available commands = %#v, want review/init commands", commands)
 	}
 	var created struct {
 		SessionID     string `json:"sessionId"`

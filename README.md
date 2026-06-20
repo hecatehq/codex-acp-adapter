@@ -48,7 +48,8 @@ Implemented:
   notifications for config changes, and `session_info_update` notifications
   when transcript metadata changes
 - command-backed `/review` advertisement and mapping to `codex review
-  --uncommitted`
+  --uncommitted`, plus `/init` advertisement through the normal `codex exec`
+  prompt path
 - Codex `exec --json` stream translation into ACP assistant text, reasoning,
   tool-call, and usage updates, plus generic command `tool_call` activity for
   the native Codex process
@@ -59,7 +60,7 @@ Not implemented yet:
 - vendor-specific durable/native persistent session semantics across adapter
   process restarts
 - complete vendor-specific permission/auth/slash-command mapping beyond the
-  adapter-owned `/review` command
+  adapter-owned `/review` and `/init` commands
 - vendor-native MCP tool permission and connection-lifecycle mapping beyond
   passing per-session MCP server config into Codex
 - runtime config/auth/model discovery
@@ -125,6 +126,10 @@ without claiming vendor-native durable history. Config changes return the
 current config option list and publish `config_option_update` notifications.
 Completed command-backed prompts publish `session_info_update` notifications
 with the in-memory title and updated timestamp when transcript metadata changes.
+The adapter advertises `/review` and `/init` as ACP available commands:
+`/review` maps to Codex's native `review --uncommitted` command, while `/init`
+is passed through `codex exec` as a normal Codex slash prompt so Codex can
+inspect the workspace and create or update repository agent instructions.
 
 The root ACP server can also launch an explicit subprocess-backed ACP runtime
 with `--runtime-binary`, `--runtime-workdir`, and repeated `--runtime-arg`

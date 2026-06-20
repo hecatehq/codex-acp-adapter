@@ -53,11 +53,12 @@ func TestNewCLISpecExposesLibraryContract(t *testing.T) {
 	if spec.Info.Name != codexadapter.Name || spec.Info.Version != "2.0.0" {
 		t.Fatalf("spec.Info = %#v", spec.Info)
 	}
-	if spec.Command == nil || spec.Command.BuildPrompt == nil || spec.Command.NewStreamParser == nil || len(spec.Command.Options) != 4 || len(spec.Command.Commands) != 1 || !spec.Command.IncludeTranscript {
-		t.Fatalf("command spec = %#v, want command-backed bridge with config options and review command", spec.Command)
+	if spec.Command == nil || spec.Command.BuildPrompt == nil || spec.Command.NewStreamParser == nil || len(spec.Command.Options) != 4 || len(spec.Command.Commands) != 2 || !spec.Command.IncludeTranscript {
+		t.Fatalf("command spec = %#v, want command-backed bridge with config options and commands", spec.Command)
 	}
-	if spec.Command.Commands[0].Name != "review" || spec.Command.Commands[0].InputHint == "" {
-		t.Fatalf("commands = %#v, want review command with input hint", spec.Command.Commands)
+	if spec.Command.Commands[0].Name != "review" || spec.Command.Commands[0].InputHint == "" ||
+		spec.Command.Commands[1].Name != "init" || spec.Command.Commands[1].InputHint == "" {
+		t.Fatalf("commands = %#v, want review/init commands with input hints", spec.Command.Commands)
 	}
 	if spec.Doctor == nil || spec.Doctor.Binary != "codex" {
 		t.Fatalf("doctor spec = %#v, want codex doctor", spec.Doctor)
@@ -178,6 +179,36 @@ func TestPromptCommandBuildsCodexReview(t *testing.T) {
 	}
 }
 
+func TestPromptCommandBuildsCodexInitAsExec(t *testing.T) {
+	got, err := codexadapter.PromptCommand(commandbridge.Session{
+		CWD: "/work",
+		Config: map[string]string{
+			"model":            "gpt-5-codex",
+			"reasoning_effort": "medium",
+			"sandbox":          "workspace-write",
+		},
+	}, runtimeacp.PromptParams{
+		Prompt: []runtimeacp.ContentBlock{{Type: "text", Text: "/init focus on repo guidance"}},
+	})
+	if err != nil {
+		t.Fatalf("PromptCommand: %v", err)
+	}
+	wantArgs := []string{
+		"exec",
+		"--cd", "/work",
+		"--sandbox", "workspace-write",
+		"--ask-for-approval", "never",
+		"--skip-git-repo-check",
+		"--json",
+		"--model", "gpt-5-codex",
+		"--config", `model_reasoning_effort="medium"`,
+		"/init focus on repo guidance",
+	}
+	if got.Command != "codex" || got.Dir != "/work" || !reflect.DeepEqual(got.Args, wantArgs) {
+		t.Fatalf("process spec = %#v, want codex exec args %#v", got, wantArgs)
+	}
+}
+
 func TestPromptCommandRejectsUnsupportedMCPServer(t *testing.T) {
 	_, err := codexadapter.PromptCommand(commandbridge.Session{
 		CWD:        "/work",
@@ -204,10 +235,12 @@ func TestNewServerPublishesAvailableCommands(t *testing.T) {
 	}
 	update := decodeSessionUpdate(t, responses[0])
 	if update.Update.SessionUpdate != "available_commands_update" ||
-		len(update.Update.AvailableCommands) != 1 ||
+		len(update.Update.AvailableCommands) != 2 ||
 		update.Update.AvailableCommands[0].Name != "review" ||
-		update.Update.AvailableCommands[0].Input.Unstructured.Hint != "optional review instructions" {
-		t.Fatalf("available commands = %#v, want review command", update)
+		update.Update.AvailableCommands[0].Input.Unstructured.Hint != "optional review instructions" ||
+		update.Update.AvailableCommands[1].Name != "init" ||
+		update.Update.AvailableCommands[1].Input.Unstructured.Hint != "optional instruction focus" {
+		t.Fatalf("available commands = %#v, want review/init commands", update)
 	}
 }
 

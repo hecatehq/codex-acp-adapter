@@ -127,9 +127,10 @@ parity.
 - root ACP native command bridge: session creation with Codex model/reasoning
   config options, sandbox config option, web-search config option, config
   updates, `codex exec --json` / `--search` argv construction, `/review`
-  advertisement plus `codex review --uncommitted` argv construction, additional
-  workspace directories, ACP HTTP/stdio MCP server config propagation into
-  Codex `-c mcp_servers.<name>=...` overrides, streamed JSONL parsing into ACP
+  advertisement plus `codex review --uncommitted` argv construction, `/init`
+  advertisement through the normal `codex exec` prompt path, additional
+  workspace directories, ACP HTTP/stdio MCP server config propagation into Codex
+  `-c mcp_servers.<name>=...` overrides, streamed JSONL parsing into ACP
   assistant text, reasoning, tool-call, and usage updates, generic command
   `tool_call` activity for the outer Codex process, in-memory load/resume/fork
   capability, bounded transcript replay for later command prompts, and prompt
