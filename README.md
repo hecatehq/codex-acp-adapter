@@ -51,9 +51,10 @@ Implemented:
   --uncommitted`, plus `/init` advertisement through the normal `codex exec`
   prompt path
 - Codex `exec --json` stream translation into ACP assistant text, reasoning,
-  tool-call, and usage updates, including provider-native shell, file, patch,
-  web, MCP, image, plan, TODO, goal, and review tool classifications, plus
-  generic command `tool_call` activity for the native Codex process
+  tool-call, usage, and terminal stop-reason updates, including provider-native
+  shell, file, patch, web, MCP, image, plan, TODO, goal, and review tool
+  classifications, plus generic command `tool_call` activity for the native
+  Codex process
 - ACP `authenticate` mapped to the native `codex login` command
 - ACP `logout` mapped to the native `codex logout` command
 - CI and tag-driven release packaging for unsigned alpha binaries

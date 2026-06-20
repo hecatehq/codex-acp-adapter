@@ -82,11 +82,10 @@ func mapCodexItemCompleted(item map[string]any) commandbridge.JSONLMapping {
 }
 
 func mapCodexTurnCompleted(params map[string]any) commandbridge.JSONLMapping {
+	mapping := commandbridge.JSONLMapping{StopReason: codexStopReason(params)}
 	if text := firstText(params, "final_answer", "output_text", "message"); text != "" {
-		return commandbridge.JSONLMapping{
-			Events:         []commandbridge.StreamEvent{commandbridge.AgentMessageChunk(text)},
-			TranscriptText: text,
-		}
+		mapping.Events = append(mapping.Events, commandbridge.AgentMessageChunk(text))
+		mapping.TranscriptText = text
 	}
 	usage := mapValue(params["usage"])
 	if len(usage) == 0 {
@@ -95,14 +94,34 @@ func mapCodexTurnCompleted(params map[string]any) commandbridge.JSONLMapping {
 	used := sumInts(usage, "input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens", "total_tokens")
 	size := firstInt(usage, "context_window", "context_window_tokens", "size")
 	if used > 0 && size > 0 {
-		return commandbridge.JSONLMapping{Events: []commandbridge.StreamEvent{commandbridge.UsageUpdate(used, size)}}
+		mapping.Events = append(mapping.Events, commandbridge.UsageUpdate(used, size))
 	}
-	return commandbridge.JSONLMapping{}
+	return mapping
 }
 
 func looksLikeCodexMessage(method string) bool {
 	method = strings.ToLower(method)
 	return strings.Contains(method, "message") || strings.Contains(method, "output_text") || strings.Contains(method, "final")
+}
+
+func codexStopReason(values map[string]any) runtimeacp.StopReason {
+	reason := strings.ToLower(firstString(values, "stop_reason", "stopReason", "finish_reason", "finishReason", "reason", "status", "state"))
+	switch {
+	case reason == "":
+		return ""
+	case strings.Contains(reason, "max_turn"):
+		return runtimeacp.StopReasonMaxTurnRequests
+	case strings.Contains(reason, "max_token"), strings.Contains(reason, "token_limit"), strings.Contains(reason, "length"):
+		return runtimeacp.StopReasonMaxTokens
+	case strings.Contains(reason, "refusal"), strings.Contains(reason, "refused"), strings.Contains(reason, "safety"):
+		return runtimeacp.StopReasonRefusal
+	case strings.Contains(reason, "cancel"):
+		return runtimeacp.StopReasonCancelled
+	case strings.Contains(reason, "end"), strings.Contains(reason, "complete"), strings.Contains(reason, "success"), strings.Contains(reason, "done"):
+		return runtimeacp.StopReasonEndTurn
+	default:
+		return ""
+	}
 }
 
 func isCodexAgentMessage(item map[string]any) bool {
