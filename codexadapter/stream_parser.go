@@ -19,6 +19,9 @@ func mapCodexStreamEvent(event map[string]any) (commandbridge.JSONLMapping, erro
 	if len(params) == 0 {
 		params = event
 	}
+	if isCodexPermissionRequest(method, params) {
+		return mapCodexPermissionRequest(params), nil
+	}
 	switch method {
 	case "item/reasoning/textDelta", "item/reasoning/summaryTextDelta":
 		if text := firstText(params, "delta", "text", "summary_text", "summaryText"); text != "" {
@@ -79,6 +82,74 @@ func mapCodexItemCompleted(item map[string]any) commandbridge.JSONLMapping {
 		}}
 	}
 	return commandbridge.JSONLMapping{}
+}
+
+func isCodexPermissionRequest(method string, params map[string]any) bool {
+	method = strings.ToLower(method)
+	if !strings.Contains(method, "permission") && !strings.Contains(method, "approval") {
+		return false
+	}
+	if strings.Contains(method, "response") ||
+		strings.Contains(method, "result") ||
+		strings.Contains(method, "resolved") ||
+		strings.Contains(method, "decision") {
+		return false
+	}
+	return codexToolID(codexPermissionToolCall(params)) != ""
+}
+
+func mapCodexPermissionRequest(params map[string]any) commandbridge.JSONLMapping {
+	toolCall := codexPermissionToolCall(params)
+	id := codexToolID(toolCall)
+	if id == "" {
+		return commandbridge.JSONLMapping{}
+	}
+	title := codexToolTitle(toolCall)
+	kind := firstString(toolCall, "kind")
+	if kind == "" {
+		kind = codexToolKind(toolCall)
+	}
+	rawInput := codexToolRawInput(toolCall)
+	if rawInput == nil {
+		rawInput = codexToolRawInput(params)
+	}
+	return commandbridge.JSONLMapping{Events: []commandbridge.StreamEvent{
+		commandbridge.ToolCallPermissionRequest(id, title, kind, rawInput, codexPermissionOptions(params)),
+	}}
+}
+
+func codexPermissionToolCall(params map[string]any) map[string]any {
+	for _, key := range []string{"toolCall", "tool_call", "item", "call"} {
+		if value := mapValue(params[key]); len(value) > 0 {
+			return value
+		}
+	}
+	return params
+}
+
+func codexPermissionOptions(params map[string]any) []commandbridge.PermissionOption {
+	for _, key := range []string{"options", "permission_options", "permissionOptions", "choices"} {
+		raw := sliceValue(params[key])
+		if len(raw) == 0 {
+			continue
+		}
+		options := make([]commandbridge.PermissionOption, 0, len(raw))
+		for _, value := range raw {
+			option := mapValue(value)
+			if len(option) == 0 {
+				continue
+			}
+			options = append(options, commandbridge.PermissionOption{
+				OptionID: firstString(option, "optionId", "option_id", "id", "value"),
+				Name:     firstString(option, "name", "label", "title"),
+				Kind:     firstString(option, "kind", "type"),
+			})
+		}
+		if len(options) > 0 {
+			return options
+		}
+	}
+	return nil
 }
 
 func mapCodexTurnCompleted(params map[string]any) commandbridge.JSONLMapping {
@@ -333,6 +404,21 @@ func mapValue(value any) map[string]any {
 		return typed
 	}
 	return nil
+}
+
+func sliceValue(value any) []any {
+	switch typed := value.(type) {
+	case []any:
+		return typed
+	case []map[string]any:
+		out := make([]any, 0, len(typed))
+		for _, item := range typed {
+			out = append(out, item)
+		}
+		return out
+	default:
+		return nil
+	}
 }
 
 type jsonNumber string
