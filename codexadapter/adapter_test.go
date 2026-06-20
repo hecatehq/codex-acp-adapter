@@ -492,6 +492,65 @@ printf '{"method":"item/completed","params":{"item":{"type":"local_shell_call","
 	}
 }
 
+func TestNewServerRequestsPermissionFromCodexStream(t *testing.T) {
+	installFakeCommand(t, "codex", `
+if [ "$1" != "exec" ]; then
+  echo "unexpected command: $*" >&2
+  exit 64
+fi
+printf '{"method":"permission/requested","params":{"toolCall":{"toolCallId":"tool-1","title":"Run tests","kind":"execute","rawInput":{"command":"go test ./..."}},"options":[{"optionId":"allow","name":"Allow","kind":"allow_once"},{"optionId":"reject","name":"Reject","kind":"reject_once"}]}}\n'
+printf '{"method":"item/completed","params":{"item":{"type":"agent_message","id":"msg-1","text":"allowed"}}}\n'
+	`)
+	client := acptest.NewClient(t, codexadapter.NewServer("test"))
+	client.Request("initialize", map[string]any{})
+	createdResponses := client.Send(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      2,
+		"method":  "session/new",
+		"params":  map[string]any{"cwd": t.TempDir()},
+	})
+	var session struct {
+		SessionID string `json:"sessionId"`
+	}
+	createdResponses[1].ResultInto(t, &session)
+
+	responses := client.SendRaw(strings.Join([]string{
+		`{"jsonrpc":"2.0","id":3,"method":"session/prompt","params":{"sessionId":"` + session.SessionID + `","prompt":[{"type":"text","text":"hello"}]}}`,
+		`{"jsonrpc":"2.0","id":"server-1","result":{"outcome":{"outcome":"selected","optionId":"allow"}}}`,
+	}, "\n") + "\n")
+	if len(responses) != 6 {
+		t.Fatalf("responses = %#v, want tool start + permission + answer + tool finish + session info + prompt result", responses)
+	}
+	permission := decodePermissionRequest(t, responses[1])
+	if permission.SessionID != session.SessionID ||
+		permission.ToolCall.ToolCallID != "tool-1" ||
+		permission.ToolCall.Title != "Run tests" ||
+		permission.ToolCall.Status != "pending" ||
+		permission.ToolCall.RawInput["command"] != "go test ./..." ||
+		len(permission.Options) != 2 ||
+		permission.Options[0].OptionID != "allow" ||
+		permission.Options[1].OptionID != "reject" {
+		t.Fatalf("permission = %#v, want Codex stream permission request", permission)
+	}
+	answer := decodeSessionUpdate(t, responses[2])
+	if answer.Update.SessionUpdate != "agent_message_chunk" || decodeChunkText(t, answer.Update.Content) != "allowed" {
+		t.Fatalf("answer = %#v, want stream continuation after approval", answer)
+	}
+	info := decodeSessionUpdate(t, responses[4])
+	if info.Update.SessionUpdate != "session_info_update" ||
+		info.Update.Title != "hello" ||
+		info.Update.UpdatedAt == "" {
+		t.Fatalf("session info = %#v, want transcript metadata", info)
+	}
+	var promptResult struct {
+		StopReason string `json:"stopReason"`
+	}
+	responses[5].ResultInto(t, &promptResult)
+	if promptResult.StopReason != "end_turn" {
+		t.Fatalf("stop reason = %q, want end_turn", promptResult.StopReason)
+	}
+}
+
 func TestPromptCommandRequiresWorkspace(t *testing.T) {
 	_, err := codexadapter.PromptCommand(commandbridge.Session{}, runtimeacp.PromptParams{
 		Prompt: []runtimeacp.ContentBlock{{Type: "text", Text: "hello"}},
@@ -546,6 +605,36 @@ func TestCodexStreamParserMapsJSONL(t *testing.T) {
 		events[4].Update["toolCallId"] != "patch-1" ||
 		events[4].Update["status"] != "completed" {
 		t.Fatalf("tool finish = %#v, want completed tool", events[4].Update)
+	}
+}
+
+func TestCodexStreamParserMapsPermissionRequest(t *testing.T) {
+	parser := codexadapter.NewStreamParser(commandbridge.Session{}, runtimeacp.PromptParams{})
+
+	events, err := parser.Parse([]byte(`{"method":"permission/requested","params":{"toolCall":{"toolCallId":"tool-1","title":"Run tests","kind":"execute","rawInput":{"command":"go test ./..."}},"options":[{"optionId":"allow","name":"Allow","kind":"allow_once"},{"optionId":"reject","name":"Reject","kind":"reject_once"}]}}` + "\n"))
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want permission request: %#v", len(events), events)
+	}
+	req := events[0].PermissionRequest
+	if req == nil {
+		t.Fatalf("event = %#v, want permission request", events[0])
+	}
+	rawInput, _ := req.RawInput.(map[string]any)
+	if req.ToolCallID != "tool-1" ||
+		req.Title != "Run tests" ||
+		req.Kind != "execute" ||
+		rawInput["command"] != "go test ./..." {
+		t.Fatalf("permission request = %#v, want Codex tool permission", req)
+	}
+	if len(req.Options) != 2 ||
+		req.Options[0].OptionID != "allow" ||
+		req.Options[0].Kind != "allow_once" ||
+		req.Options[1].OptionID != "reject" ||
+		req.Options[1].Kind != "reject_once" {
+		t.Fatalf("permission options = %#v, want allow/reject", req.Options)
 	}
 }
 
@@ -682,6 +771,22 @@ type sessionUpdate struct {
 	} `json:"update"`
 }
 
+type permissionRequest struct {
+	SessionID string `json:"sessionId"`
+	ToolCall  struct {
+		ToolCallID string         `json:"toolCallId"`
+		Title      string         `json:"title"`
+		Kind       string         `json:"kind"`
+		Status     string         `json:"status"`
+		RawInput   map[string]any `json:"rawInput"`
+	} `json:"toolCall"`
+	Options []struct {
+		OptionID string `json:"optionId"`
+		Name     string `json:"name"`
+		Kind     string `json:"kind"`
+	} `json:"options"`
+}
+
 func decodeSessionUpdate(t testing.TB, response acptest.Response) sessionUpdate {
 	t.Helper()
 	if response.Method != "session/update" {
@@ -690,6 +795,16 @@ func decodeSessionUpdate(t testing.TB, response acptest.Response) sessionUpdate 
 	var update sessionUpdate
 	response.ParamsInto(t, &update)
 	return update
+}
+
+func decodePermissionRequest(t testing.TB, response acptest.Response) permissionRequest {
+	t.Helper()
+	if response.Method != "session/request_permission" {
+		t.Fatalf("response method = %q, want session/request_permission", response.Method)
+	}
+	var req permissionRequest
+	response.ParamsInto(t, &req)
+	return req
 }
 
 func decodeChunkText(t testing.TB, raw json.RawMessage) string {

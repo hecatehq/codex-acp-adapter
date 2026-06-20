@@ -119,10 +119,11 @@ Codex live web search, translates session MCP servers into temporary Codex
 `mcp_servers` config overrides, passes only provider-specific environment
 variables through the shared process runner, and runs Codex with `exec --json`.
 Known Codex JSONL events are
-translated into ACP assistant text, reasoning, tool-call, and usage updates;
-unknown JSONL events are ignored rather than shown as raw chat text. A generic
-`tool_call` still wraps the native Codex process execution so hosts can show the
-outer command boundary. The session state is in-memory: `session/load`,
+translated into ACP assistant text, reasoning, tool-call, permission-request,
+and usage updates; unknown JSONL events are ignored rather than shown as raw
+chat text. A generic `tool_call` still wraps the native Codex process execution
+so hosts can show the outer command boundary. The session state is in-memory:
+`session/load`,
 `session/resume`, and `session/fork` work while the adapter process is alive,
 `session/list` returns the in-memory session metadata, and later prompts receive
 a bounded transcript prelude so command-backed turns keep conversational context

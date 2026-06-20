@@ -163,11 +163,11 @@ ACP bridge:
 - auth-required error classification from real Codex CLI failures
 - model/config option discovery beyond the initial static command-backed
   selectors
-- provider-native permission request/event mapping beyond the selected Codex
-  sandbox mode
+- provider-native permission response edge cases beyond parsed request mapping
+  and the selected Codex sandbox mode
 - deeper provider-native review semantics beyond classifying review tool
   updates
-- permission requests, late permission responses, and rejected/denied tools
+- late permission responses and rejected/denied provider tools
 - vendor MCP connection lifecycle semantics and MCP tool approval elicitations
 - production release signing/provenance
 
