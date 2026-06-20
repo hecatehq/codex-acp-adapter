@@ -1,9 +1,10 @@
 # Testing
 
 This repository tests the adapter scaffold, the subprocess-backed ACP runtime
-bridge, and the first native Codex CLI command bridge. It does not yet cover a
-complete Codex replacement with persistent vendor sessions and tool/permission
-parity.
+bridge, and the native Codex CLI command bridge Hecate uses today. Hecate's
+replacement path is covered by Hecate release-binary smoke tests; this adapter
+repo still tracks deeper vendor-native parity before calling the adapter
+production-grade.
 
 ## Covered Today
 
@@ -137,6 +138,8 @@ parity.
   Codex process,
   in-memory load/resume/fork capability, bounded transcript replay for later
   command prompts, and prompt completion
+- source-shaped Codex stream fixtures for permission requests, shell/tool
+  lifecycle updates, reasoning chunks, usage, and terminal stop reasons
 - shared adapter conformance checks for the Hecate-facing ACP initialize
   contract, advertised auth/logout capabilities, session config selectors, and
   available slash-command names
@@ -154,8 +157,9 @@ parity.
 
 ## Not Covered Yet
 
-These must be tested before Hecate uses this as the default production Codex
-ACP bridge:
+These are not blockers for Hecate's current Go-adapter replacement path, but
+they must be covered before treating the adapter as production-grade
+vendor-native Codex parity:
 
 - vendor-specific durable persistent session storage and restore semantics
   across adapter process restarts

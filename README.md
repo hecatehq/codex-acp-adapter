@@ -4,8 +4,9 @@ Neutral Go ACP adapter for Codex-compatible coding agents.
 
 This repository is an alpha Go ACP adapter for Codex-compatible coding agents.
 It runs as a small, auditable binary that speaks ACP over stdio. The adapter can
-run Codex CLI prompts through its native command bridge, but full parity with
-the previous Codex ACP adapter is still in progress.
+run Codex CLI prompts through its native command bridge. Hecate's replacement
+path is covered by release-binary smoke tests; remaining work is deeper
+vendor-native parity and production release hardening.
 
 ## Goals
 
@@ -63,10 +64,12 @@ Not implemented yet:
 
 - vendor-specific durable/native persistent session semantics across adapter
   process restarts
-- complete vendor-specific permission/auth/slash-command mapping beyond ACP
-  `authenticate`/`logout` and the adapter-owned `/review` and `/init` commands
+- deeper provider-native permission response edge cases beyond parsed request
+  mapping and the selected Codex sandbox mode
 - vendor-native MCP tool permission and connection-lifecycle mapping beyond
   passing per-session MCP server config into Codex
+- deeper provider-native slash-command/review semantics beyond the
+  adapter-owned `/review` and `/init` command surface
 - runtime config/auth/model discovery
 - production signing/provenance for release artifacts
 
@@ -95,9 +98,8 @@ go run ./cmd/codex-acp-adapter --version
 go run ./cmd/codex-acp-adapter doctor
 ```
 
-See [docs/TESTING.md](docs/TESTING.md) for what is covered today and what must
-be covered before this adapter can be used as the default production Codex ACP
-bridge.
+See [docs/TESTING.md](docs/TESTING.md) for what is covered today and what still
+needs production-grade/deeper vendor-native parity coverage.
 See [docs/RELEASE.md](docs/RELEASE.md) for the tag-driven release flow.
 
 ## CLI Contract
