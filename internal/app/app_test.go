@@ -276,7 +276,6 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 	spec.Command.NewID = func() string { return "session-1" }
 	spec.Command.Runner = commandbridge.RunnerFunc(func(_ context.Context, got adapterprocess.Spec) (adapterprocess.Result, error) {
 		wantArgs := []string{
-			"--ask-for-approval", "never",
 			"--search",
 			"exec",
 			"--cd", workdir,

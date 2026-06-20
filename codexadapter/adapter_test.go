@@ -204,7 +204,6 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 		t.Fatalf("PromptCommand: %v", err)
 	}
 	wantArgs := []string{
-		"--ask-for-approval", "never",
 		"--search",
 		"exec",
 		"--cd", "/work",
@@ -272,7 +271,6 @@ func TestPromptCommandBuildsCodexInitAsExec(t *testing.T) {
 		t.Fatalf("PromptCommand: %v", err)
 	}
 	wantArgs := []string{
-		"--ask-for-approval", "never",
 		"exec",
 		"--cd", "/work",
 		"--sandbox", "workspace-write",
@@ -361,9 +359,6 @@ printf 'logged in\n'
 
 func TestNewServerMapsPromptAuthFailure(t *testing.T) {
 	installFakeCommand(t, "codex", `
-if [ "$1" = "--ask-for-approval" ]; then
-  shift 2
-fi
 if [ "$1" != "exec" ]; then
   echo "unexpected command: $*" >&2
   exit 64
@@ -419,9 +414,6 @@ func TestCommandAuthRequiredMapsCodexHTTP401(t *testing.T) {
 
 func TestNewServerStreamsNativeCodexOutput(t *testing.T) {
 	installFakeCommand(t, "codex", `
-if [ "$1" = "--ask-for-approval" ]; then
-  shift 2
-fi
 if [ "$1" != "exec" ]; then
   echo "unexpected command: $*" >&2
   exit 64
@@ -522,9 +514,6 @@ printf '{"method":"item/completed","params":{"item":{"type":"local_shell_call","
 
 func TestNewServerRequestsPermissionFromCodexStream(t *testing.T) {
 	installFakeCommand(t, "codex", `
-if [ "$1" = "--ask-for-approval" ]; then
-  shift 2
-fi
 if [ "$1" != "exec" ]; then
   echo "unexpected command: $*" >&2
   exit 64

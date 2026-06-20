@@ -169,9 +169,7 @@ func PromptCommand(session commandbridge.Session, params runtimeacp.PromptParams
 	if instructions, ok := reviewCommandInstructions(text); ok {
 		return codexReviewCommand(session, instructions)
 	}
-	args := []string{
-		"--ask-for-approval", "never",
-	}
+	var args []string
 	if selectedConfig(session, "web_search") == "enabled" {
 		args = append(args, "--search")
 	}
