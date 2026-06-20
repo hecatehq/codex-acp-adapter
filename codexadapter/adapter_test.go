@@ -96,7 +96,7 @@ func TestNewCLISpecExposesLibraryContract(t *testing.T) {
 	if spec.Doctor == nil || spec.Doctor.Binary != "codex" {
 		t.Fatalf("doctor spec = %#v, want codex doctor", spec.Doctor)
 	}
-	wantEnv := []string{"PATH", "HOME", "XDG_CONFIG_HOME", "TMPDIR", "CODEX_HOME", "OPENAI_API_KEY", "OPENAI_BASE_URL"}
+	wantEnv := []string{"PATH", "HOME", "USER", "LOGNAME", "XDG_CONFIG_HOME", "TMPDIR", "CODEX_HOME", "OPENAI_API_KEY", "OPENAI_BASE_URL"}
 	if !reflect.DeepEqual(spec.Runtime.InheritEnv, wantEnv) || !reflect.DeepEqual(codexadapter.RuntimeEnv(), wantEnv) {
 		t.Fatalf("runtime env = %#v / %#v, want %#v", spec.Runtime.InheritEnv, codexadapter.RuntimeEnv(), wantEnv)
 	}
@@ -114,6 +114,9 @@ func TestPromptCommandUsesNativeCodexCLIOnly(t *testing.T) {
 	assertNoPackageRunnerCommand(t, got.Command)
 	if got.Command != "codex" {
 		t.Fatalf("process command = %q, want native codex CLI", got.Command)
+	}
+	if !reflect.DeepEqual(got.Env.Inherit, codexadapter.RuntimeEnv()) {
+		t.Fatalf("process env = %#v, want runtime env allowlist", got.Env)
 	}
 
 	spec := codexadapter.NewCLISpec("2.0.0", nil, nil, nil)
@@ -139,6 +142,9 @@ func TestLogoutCommandUsesNativeCodexCLIOnly(t *testing.T) {
 	if got.Command != "codex" || got.Dir != cwd || !reflect.DeepEqual(got.Args, []string{"logout"}) {
 		t.Fatalf("process spec = %#v, want codex logout", got)
 	}
+	if !reflect.DeepEqual(got.Env.Inherit, codexadapter.RuntimeEnv()) {
+		t.Fatalf("process env = %#v, want runtime env allowlist", got.Env)
+	}
 }
 
 func TestAuthenticateCommandUsesNativeCodexCLIOnly(t *testing.T) {
@@ -153,6 +159,9 @@ func TestAuthenticateCommandUsesNativeCodexCLIOnly(t *testing.T) {
 	assertNoPackageRunnerCommand(t, got.Command)
 	if got.Command != "codex" || got.Dir != cwd || !reflect.DeepEqual(got.Args, []string{"login"}) {
 		t.Fatalf("process spec = %#v, want codex login", got)
+	}
+	if !reflect.DeepEqual(got.Env.Inherit, codexadapter.RuntimeEnv()) {
+		t.Fatalf("process env = %#v, want runtime env allowlist", got.Env)
 	}
 	if _, err := codexadapter.AuthenticateCommand("browser-login"); err == nil || !strings.Contains(err.Error(), "unsupported auth method") {
 		t.Fatalf("AuthenticateCommand unsupported error = %v, want unsupported auth method", err)
@@ -193,10 +202,12 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 		t.Fatalf("PromptCommand: %v", err)
 	}
 	wantArgs := []string{
+		"--ask-for-approval", "never",
+		"--search",
 		"exec",
 		"--cd", "/work",
 		"--sandbox", "read-only",
-		"--ask-for-approval", "never",
+		"--ignore-user-config",
 		"--skip-git-repo-check",
 		"--json",
 		"--add-dir", "/extra",
@@ -204,7 +215,6 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 		"--config", `model_reasoning_effort="high"`,
 		"--config", `mcp_servers.hecate_01_weather-http={url="https://mcp.example.com/mcp",http_headers={"Authorization"="Bearer token","X-Test"="yes"}}`,
 		"--config", `mcp_servers.hecate_02_Local_FS={command="/bin/mcp",args=["--root","/work"],env={"TOKEN"="secret"}}`,
-		"--search",
 		"hello codex",
 	}
 	if got.Command != "codex" || got.Dir != "/work" || !reflect.DeepEqual(got.Args, wantArgs) {
@@ -260,10 +270,11 @@ func TestPromptCommandBuildsCodexInitAsExec(t *testing.T) {
 		t.Fatalf("PromptCommand: %v", err)
 	}
 	wantArgs := []string{
+		"--ask-for-approval", "never",
 		"exec",
 		"--cd", "/work",
 		"--sandbox", "workspace-write",
-		"--ask-for-approval", "never",
+		"--ignore-user-config",
 		"--skip-git-repo-check",
 		"--json",
 		"--model", "gpt-5-codex",
@@ -348,6 +359,9 @@ printf 'logged in\n'
 
 func TestNewServerMapsPromptAuthFailure(t *testing.T) {
 	installFakeCommand(t, "codex", `
+if [ "$1" = "--ask-for-approval" ]; then
+  shift 2
+fi
 if [ "$1" != "exec" ]; then
   echo "unexpected command: $*" >&2
   exit 64
@@ -394,6 +408,9 @@ exit 1
 
 func TestNewServerStreamsNativeCodexOutput(t *testing.T) {
 	installFakeCommand(t, "codex", `
+if [ "$1" = "--ask-for-approval" ]; then
+  shift 2
+fi
 if [ "$1" != "exec" ]; then
   echo "unexpected command: $*" >&2
   exit 64
@@ -494,6 +511,9 @@ printf '{"method":"item/completed","params":{"item":{"type":"local_shell_call","
 
 func TestNewServerRequestsPermissionFromCodexStream(t *testing.T) {
 	installFakeCommand(t, "codex", `
+if [ "$1" = "--ask-for-approval" ]; then
+  shift 2
+fi
 if [ "$1" != "exec" ]; then
   echo "unexpected command: $*" >&2
   exit 64
@@ -658,6 +678,30 @@ func TestCodexStreamParserMapsTerminalStopReason(t *testing.T) {
 	}
 	if got := parser.StopReason(); got != runtimeacp.StopReasonMaxTokens {
 		t.Fatalf("StopReason() = %q, want max_tokens", got)
+	}
+}
+
+func TestCodexStreamParserMapsCurrentCLIJSONL(t *testing.T) {
+	parser := codexadapter.NewStreamParser(commandbridge.Session{}, runtimeacp.PromptParams{})
+	fixture := strings.Join([]string{
+		`{"type":"thread.started","thread_id":"thread-1"}`,
+		`{"type":"turn.started"}`,
+		`{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Confirmed: this is the Codex ACP adapter real CLI smoke."}}`,
+		`{"type":"turn.completed","usage":{"input_tokens":10,"cached_input_tokens":3,"output_tokens":5,"reasoning_output_tokens":0}}`,
+		"",
+	}, "\n")
+
+	events, err := parser.Parse([]byte(fixture))
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want one assistant message: %#v", len(events), events)
+	}
+	if events[0].Update["sessionUpdate"] != "agent_message_chunk" ||
+		updateText(events[0].Update) != "Confirmed: this is the Codex ACP adapter real CLI smoke." ||
+		parser.Transcript() != "Confirmed: this is the Codex ACP adapter real CLI smoke." {
+		t.Fatalf("message = %#v transcript=%q, want current Codex assistant message", events[0].Update, parser.Transcript())
 	}
 }
 

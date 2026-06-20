@@ -24,7 +24,7 @@
 
 - use `acp-adapter-kit/commandbridge` for the first native direct-CLI path:
   one lightweight ACP session per workspace, one `codex exec` process per
-  prompt, optional `--search` when the ACP web-search config is enabled, stdout
+  prompt, optional global `--search` when the ACP web-search config is enabled, stdout
   forwarded as assistant text, ACP HTTP/stdio MCP server configs mapped to
   Codex `-c mcp_servers.<name>=...` overrides, and ACP cancel mapped to process
   cancellation
