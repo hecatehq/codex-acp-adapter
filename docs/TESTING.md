@@ -139,7 +139,7 @@ parity.
 - shared adapter conformance checks for the Hecate-facing ACP initialize
   contract, advertised auth/logout capabilities, session config selectors, and
   available slash-command names
-- portable upstream/npm parity checks adapted from the previous adapter suites:
+- portable upstream parity checks adapted from the previous adapter suites:
   unsupported auth methods are rejected, `session/new` emits commands before
   returning config selectors, `session/set_config_option` updates and rejects
   invalid values, `session/list`/`session/load` expose live session state,
@@ -177,7 +177,7 @@ Use [acp-adapter-kit](https://github.com/hecatehq/acp-adapter-kit) for
 provider-neutral protocol/runtime/process tests. The kit owns ACP transport
 conformance, subprocess safety, JSON-RPC request/cancel behavior, runtime ACP
 DTO parity, runtime bridge forwarding, runtime host composition, fake-runtime
-fixtures, generic doctor-runner behavior, and portable upstream/npm parity
+fixtures, generic doctor-runner behavior, and portable upstream parity
 assertions that can run unchanged against both Go adapter implementations.
 
 Keep this repository's tests focused on Codex-specific adapter behavior:
