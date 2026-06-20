@@ -661,6 +661,65 @@ func TestCodexStreamParserMapsTerminalStopReason(t *testing.T) {
 	}
 }
 
+func TestCodexStreamParserMapsSourceShapedFixtures(t *testing.T) {
+	parser := codexadapter.NewStreamParser(commandbridge.Session{}, runtimeacp.PromptParams{})
+	fixture := strings.Join([]string{
+		`{"method":"item/started","params":{"item":{"type":"local_shell_call","id":"shell-1","command":"go test ./...","status":"in_progress"}}}`,
+		`{"event":"approval/requested","params":{"item":{"type":"local_shell_call","id":"shell-1","display_command":"go test ./...","input":{"command":"go test ./..."}},"permissionOptions":[{"id":"allow-session","label":"Allow for session","type":"allow_always"},{"id":"deny-once","label":"Deny once","type":"reject_once"}]}}`,
+		`{"method":"item/reasoning/textDelta","params":{"itemId":"reason-1","text":"checking tests"}}`,
+		`{"method":"item/completed","params":{"item":{"type":"local_shell_call","id":"shell-1","status":"completed","stdout":"ok"}}}`,
+		`{"method":"turn/completed","params":{"finishReason":"max_tokens","usage":{"input_tokens":"4","output_tokens":6,"context_window_tokens":128}}}`,
+		"",
+	}, "\n")
+
+	events, err := parser.Parse([]byte(fixture))
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if len(events) != 5 {
+		t.Fatalf("events len = %d, want 5: %#v", len(events), events)
+	}
+	if events[0].Update["sessionUpdate"] != "tool_call" ||
+		events[0].Update["toolCallId"] != "shell-1" ||
+		events[0].Update["kind"] != "execute" ||
+		events[0].Update["title"] != "go test ./..." {
+		t.Fatalf("tool start = %#v, want shell start", events[0].Update)
+	}
+	req := events[1].PermissionRequest
+	if req == nil {
+		t.Fatalf("event = %#v, want permission request", events[1])
+	}
+	rawInput, _ := req.RawInput.(map[string]any)
+	if req.ToolCallID != "shell-1" ||
+		req.Title != "go test ./..." ||
+		req.Kind != "execute" ||
+		rawInput["command"] != "go test ./..." ||
+		len(req.Options) != 2 ||
+		req.Options[0].OptionID != "allow-session" ||
+		req.Options[0].Kind != "allow_always" ||
+		req.Options[1].OptionID != "deny-once" ||
+		req.Options[1].Kind != "reject_once" {
+		t.Fatalf("permission request = %#v, rawInput=%#v, want source-shaped shell permission", req, rawInput)
+	}
+	if events[2].Update["sessionUpdate"] != "agent_thought_chunk" ||
+		updateText(events[2].Update) != "checking tests" {
+		t.Fatalf("thought = %#v, want reasoning text", events[2].Update)
+	}
+	if events[3].Update["sessionUpdate"] != "tool_call_update" ||
+		events[3].Update["status"] != "completed" ||
+		events[3].Update["rawOutput"] != "ok" {
+		t.Fatalf("tool finish = %#v, want completed shell output", events[3].Update)
+	}
+	if events[4].Update["sessionUpdate"] != "usage_update" ||
+		events[4].Update["used"] != 10 ||
+		events[4].Update["size"] != 128 {
+		t.Fatalf("usage = %#v, want source-shaped usage", events[4].Update)
+	}
+	if got := parser.StopReason(); got != runtimeacp.StopReasonMaxTokens {
+		t.Fatalf("StopReason() = %q, want max_tokens", got)
+	}
+}
+
 func TestCodexStreamParserClassifiesProviderTools(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -816,6 +875,12 @@ func decodeChunkText(t testing.TB, raw json.RawMessage) string {
 		t.Fatalf("decode chunk content: %v\n%s", err, string(raw))
 	}
 	return content.Text
+}
+
+func updateText(update map[string]any) string {
+	content, _ := update["content"].(map[string]any)
+	text, _ := content["text"].(string)
+	return text
 }
 
 func installFakeCommand(t testing.TB, name string, body string) {
