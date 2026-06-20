@@ -131,9 +131,10 @@ parity.
   advertisement through the normal `codex exec` prompt path, additional
   workspace directories, ACP HTTP/stdio MCP server config propagation into Codex
   `-c mcp_servers.<name>=...` overrides, streamed JSONL parsing into ACP
-  assistant text, reasoning, usage, and provider-native tool classifications
-  for shell, file, patch, web, MCP, image, plan, TODO, goal, and review updates,
-  generic command `tool_call` activity for the outer Codex process,
+  assistant text, reasoning, usage, terminal stop reasons, and provider-native
+  tool classifications for shell, file, patch, web, MCP, image, plan, TODO,
+  goal, and review updates, generic command `tool_call` activity for the outer
+  Codex process,
   in-memory load/resume/fork capability, bounded transcript replay for later
   command prompts, and prompt completion
 - shared adapter conformance checks for the Hecate-facing ACP initialize
@@ -158,7 +159,6 @@ ACP bridge:
 
 - vendor-specific durable persistent session storage and restore semantics
   across adapter process restarts
-- terminal prompt results beyond parsed command stream updates
 - real vendor-runtime cancellation and no double-settle behavior
 - auth-required error classification from real Codex CLI failures
 - model/config option discovery beyond the initial static command-backed
