@@ -136,6 +136,9 @@ parity.
   generic command `tool_call` activity for the outer Codex process,
   in-memory load/resume/fork capability, bounded transcript replay for later
   command prompts, and prompt completion
+- shared adapter conformance checks for the Hecate-facing ACP initialize
+  contract, advertised auth/logout capabilities, session config selectors, and
+  available slash-command names
 - Coder ACP SDK compatibility guardrails for the adopted protocol primitives:
   JSON-RPC error shape, default initialize protocol version, and selected
   runtime ACP request JSON shapes
@@ -151,7 +154,7 @@ ACP bridge:
   across adapter process restarts
 - terminal prompt results beyond parsed command stream updates
 - real vendor-runtime cancellation and no double-settle behavior
-- auth methods and auth-required errors
+- auth-required error classification from real Codex CLI failures
 - model/config option discovery beyond the initial static command-backed
   selectors
 - provider-native permission request/event mapping beyond the selected Codex

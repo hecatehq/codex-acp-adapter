@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hecatehq/acp-adapter-kit/acptest"
+	"github.com/hecatehq/acp-adapter-kit/adaptertest"
 	"github.com/hecatehq/acp-adapter-kit/commandbridge"
 	"github.com/hecatehq/acp-adapter-kit/runtimeacp"
 	"github.com/hecatehq/codex-acp-adapter/codexadapter"
@@ -33,30 +34,31 @@ func TestInfoPinsCodexCapabilities(t *testing.T) {
 }
 
 func TestInitializeAdvertisesLoadSession(t *testing.T) {
-	client := acptest.NewClient(t, codexadapter.NewServer("test"))
+	adaptertest.AssertInitializeContract(t, codexadapter.NewServer("test"), adaptertest.InitializeContract{
+		Name:            codexadapter.Name,
+		Title:           codexadapter.Title,
+		Version:         "test",
+		Images:          true,
+		EmbeddedContext: true,
+		MCPHTTP:         true,
+		MCPSSE:          false,
+		LoadSession:     true,
+		Logout:          true,
+		AuthMethodIDs:   []string{"agent-login"},
+	})
+}
 
-	resp := client.Request("initialize", map[string]any{})
-	var result struct {
-		AgentCapabilities struct {
-			LoadSession bool `json:"loadSession"`
-			Auth        struct {
-				Logout map[string]any `json:"logout"`
-			} `json:"auth"`
-		} `json:"agentCapabilities"`
-		AuthMethods []struct {
-			ID string `json:"id"`
-		} `json:"authMethods"`
-	}
-	resp.ResultInto(t, &result)
-	if !result.AgentCapabilities.LoadSession {
-		t.Fatal("loadSession = false, want true")
-	}
-	if result.AgentCapabilities.Auth.Logout == nil {
-		t.Fatal("auth.logout = nil, want advertised logout capability")
-	}
-	if len(result.AuthMethods) != 1 || result.AuthMethods[0].ID != "agent-login" {
-		t.Fatalf("authMethods = %#v, want agent-login", result.AuthMethods)
-	}
+func TestNewServerExposesHecateControls(t *testing.T) {
+	adaptertest.AssertSessionBootstrapContract(t, codexadapter.NewServer("test"), adaptertest.SessionBootstrapContract{
+		CWD: t.TempDir(),
+		ConfigOptions: []adaptertest.ConfigOptionContract{
+			{ID: "model", Category: "model", CurrentValue: "__default__"},
+			{ID: "reasoning_effort", Category: "thought_level", CurrentValue: "__default__"},
+			{ID: "sandbox", Category: "permission", CurrentValue: "workspace-write"},
+			{ID: "web_search", Category: "tool", CurrentValue: "disabled"},
+		},
+		AvailableCommands: []string{"review", "init"},
+	})
 }
 
 func TestNewCLISpecExposesLibraryContract(t *testing.T) {
