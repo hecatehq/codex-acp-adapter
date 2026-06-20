@@ -61,6 +61,22 @@ func TestNewServerExposesHecateControls(t *testing.T) {
 	})
 }
 
+func TestNewServerMatchesPortableUpstreamParity(t *testing.T) {
+	adaptertest.AssertUpstreamParityContract(t, codexadapter.NewServer("test"), adaptertest.UpstreamParityContract{
+		CWD:          t.TempDir(),
+		AuthMethodID: "agent-login",
+		ConfigChange: adaptertest.ConfigChangeContract{
+			ID:    "model",
+			Value: "gpt-5-codex",
+		},
+		LoadUnknownSession: adaptertest.LoadUnknownSessionContract{
+			SessionID: "upstream-codex-missing-session",
+			CWD:       t.TempDir(),
+			Allowed:   false,
+		},
+	})
+}
+
 func TestNewCLISpecExposesLibraryContract(t *testing.T) {
 	spec := codexadapter.NewCLISpec("2.0.0", nil, nil, nil)
 
