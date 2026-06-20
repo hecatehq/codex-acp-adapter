@@ -127,8 +127,9 @@ production-grade.
   bridge
 - root ACP native command bridge: session creation with Codex model/reasoning
   config options, sandbox config option, web-search config option, config
-  updates, current Codex global approval/search flags plus isolated
-  `codex exec --ignore-user-config --json` argv construction, explicit native
+  updates, current Codex search flag plus isolated
+  `codex exec --ignore-user-config --json` argv construction without removed
+  approval flags, explicit native
   command environment allowlists, `/review`
   advertisement plus `codex review --uncommitted` argv construction, `/init`
   advertisement through the normal `codex exec` prompt path, additional

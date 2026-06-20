@@ -120,7 +120,9 @@ exposes ACP config options for model, reasoning effort, Codex sandbox mode, and
 Codex live web search, translates session MCP servers into temporary Codex
 `mcp_servers` config overrides, passes only provider-specific environment
 variables through the shared process runner, and runs Codex with `exec --json`.
-Known Codex JSONL events are
+Codex command approvals are governed by the selected sandbox plus permission
+events emitted by the Codex JSONL stream; the adapter does not pass removed
+legacy approval flags. Known Codex JSONL events are
 translated into ACP assistant text, reasoning, tool-call, permission-request,
 and usage updates; unknown JSONL events are ignored rather than shown as raw
 chat text. A generic `tool_call` still wraps the native Codex process execution
