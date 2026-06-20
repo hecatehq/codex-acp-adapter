@@ -107,7 +107,7 @@ func ConfigOptions() []commandbridge.SelectConfigOption {
 		{
 			ID:           "model",
 			Name:         "Model",
-			Description:  "Codex CLI model override. Default uses the operator's Codex configuration.",
+			Description:  "Codex CLI model override. Default uses the Codex CLI default.",
 			Category:     "model",
 			DefaultValue: configDefault,
 			Options: []commandbridge.SelectValue{
@@ -120,7 +120,7 @@ func ConfigOptions() []commandbridge.SelectConfigOption {
 		{
 			ID:           "reasoning_effort",
 			Name:         "Reasoning effort",
-			Description:  "Codex CLI reasoning-effort override. Default uses the operator's Codex configuration.",
+			Description:  "Codex CLI reasoning-effort override. Default uses the Codex CLI default.",
 			Category:     "thought_level",
 			DefaultValue: configDefault,
 			Options: []commandbridge.SelectValue{
@@ -170,13 +170,19 @@ func PromptCommand(session commandbridge.Session, params runtimeacp.PromptParams
 		return codexReviewCommand(session, instructions)
 	}
 	args := []string{
+		"--ask-for-approval", "never",
+	}
+	if selectedConfig(session, "web_search") == "enabled" {
+		args = append(args, "--search")
+	}
+	args = append(args,
 		"exec",
 		"--cd", session.CWD,
 		"--sandbox", selectedSandbox(session),
-		"--ask-for-approval", "never",
+		"--ignore-user-config",
 		"--skip-git-repo-check",
 		"--json",
-	}
+	)
 	for _, dir := range session.AdditionalDirectories {
 		if dir != "" {
 			args = append(args, "--add-dir", dir)
@@ -193,14 +199,12 @@ func PromptCommand(session commandbridge.Session, params runtimeacp.PromptParams
 		return adapterprocess.Spec{}, err
 	}
 	args = append(args, mcpArgs...)
-	if selectedConfig(session, "web_search") == "enabled" {
-		args = append(args, "--search")
-	}
 	args = append(args, text)
 	return adapterprocess.Spec{
 		Command: "codex",
 		Args:    args,
 		Dir:     session.CWD,
+		Env:     codexProcessEnv(),
 	}, nil
 }
 
@@ -213,6 +217,7 @@ func LogoutCommand() (adapterprocess.Spec, error) {
 		Command: "codex",
 		Args:    []string{"logout"},
 		Dir:     dir,
+		Env:     codexProcessEnv(),
 	}, nil
 }
 
@@ -228,6 +233,7 @@ func AuthenticateCommand(methodID string) (adapterprocess.Spec, error) {
 		Command: "codex",
 		Args:    []string{"login"},
 		Dir:     dir,
+		Env:     codexProcessEnv(),
 	}, nil
 }
 
@@ -283,6 +289,7 @@ func codexReviewCommand(session commandbridge.Session, instructions string) (ada
 		Command: "codex",
 		Args:    args,
 		Dir:     session.CWD,
+		Env:     codexProcessEnv(),
 	}, nil
 }
 
@@ -410,12 +417,18 @@ func RuntimeEnv() []string {
 	return []string{
 		"PATH",
 		"HOME",
+		"USER",
+		"LOGNAME",
 		"XDG_CONFIG_HOME",
 		"TMPDIR",
 		"CODEX_HOME",
 		"OPENAI_API_KEY",
 		"OPENAI_BASE_URL",
 	}
+}
+
+func codexProcessEnv() adapterprocess.EnvPolicy {
+	return adapterprocess.EnvPolicy{Inherit: RuntimeEnv()}
 }
 
 func DoctorSpec() *adaptercli.DoctorSpec {

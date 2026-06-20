@@ -127,7 +127,9 @@ production-grade.
   bridge
 - root ACP native command bridge: session creation with Codex model/reasoning
   config options, sandbox config option, web-search config option, config
-  updates, `codex exec --json` / `--search` argv construction, `/review`
+  updates, current Codex global approval/search flags plus isolated
+  `codex exec --ignore-user-config --json` argv construction, explicit native
+  command environment allowlists, `/review`
   advertisement plus `codex review --uncommitted` argv construction, `/init`
   advertisement through the normal `codex exec` prompt path, additional
   workspace directories, ACP HTTP/stdio MCP server config propagation into Codex
@@ -140,6 +142,9 @@ production-grade.
   command prompts, and prompt completion
 - source-shaped Codex stream fixtures for permission requests, shell/tool
   lifecycle updates, reasoning chunks, usage, and terminal stop reasons
+- opt-in real Codex CLI smoke coverage that requires an authenticated local
+  `codex` binary and proves a real prompt completes through the ACP command
+  bridge
 - shared adapter conformance checks for the Hecate-facing ACP initialize
   contract, advertised auth/logout capabilities, session config selectors, and
   available slash-command names
@@ -200,3 +205,18 @@ Keep this repository's tests focused on Codex-specific adapter behavior:
 Do not recreate kit packages under `internal/`. Add reusable protocol/runtime
 coverage to `acp-adapter-kit`, then update this adapter to the new kit version
 and add only Codex-specific integration assertions here.
+
+## Real CLI Smoke
+
+The real Codex CLI smoke is intentionally excluded from the default test suite
+because it requires local authentication, network access, and may use provider
+quota. Run it only on a prepared developer machine:
+
+```sh
+make real-cli-smoke
+```
+
+The target sets `ACP_ADAPTER_REAL_CLI_SMOKE=1` and runs the `real_cli` build-tag
+test. It creates a temporary workspace, opens an ACP session, sends one minimal
+prompt through the native `codex` command bridge, and asserts that the prompt
+finishes with parsed assistant output.

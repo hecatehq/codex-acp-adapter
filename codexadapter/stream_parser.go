@@ -15,6 +15,7 @@ func NewStreamParser(commandbridge.Session, runtimeacp.PromptParams) commandbrid
 
 func mapCodexStreamEvent(event map[string]any) (commandbridge.JSONLMapping, error) {
 	method := firstString(event, "method", "type", "event")
+	method = strings.ReplaceAll(method, ".", "/")
 	params := mapValue(event["params"])
 	if len(params) == 0 {
 		params = event

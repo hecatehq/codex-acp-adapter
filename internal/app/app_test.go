@@ -276,17 +276,18 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 	spec.Command.NewID = func() string { return "session-1" }
 	spec.Command.Runner = commandbridge.RunnerFunc(func(_ context.Context, got adapterprocess.Spec) (adapterprocess.Result, error) {
 		wantArgs := []string{
+			"--ask-for-approval", "never",
+			"--search",
 			"exec",
 			"--cd", workdir,
 			"--sandbox", "read-only",
-			"--ask-for-approval", "never",
+			"--ignore-user-config",
 			"--skip-git-repo-check",
 			"--json",
 			"--add-dir", extraDir,
 			"--model", "gpt-5-codex",
 			"--config", `model_reasoning_effort="high"`,
 			"--config", `mcp_servers.hecate_01_weather={url="https://mcp.example.com/mcp",http_headers={"X-Test"="yes"}}`,
-			"--search",
 			"hello codex",
 		}
 		if got.Command != "codex" || got.Dir != workdir || !reflect.DeepEqual(got.Args, wantArgs) {
