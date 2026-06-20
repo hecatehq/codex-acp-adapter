@@ -4,8 +4,11 @@
 package codexadapter
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/hecatehq/acp-adapter-kit/acp"
@@ -143,7 +146,7 @@ func PromptCommand(session commandbridge.Session, params runtimeacp.PromptParams
 		return adapterprocess.Spec{}, fmt.Errorf("session cwd is required")
 	}
 	if instructions, ok := reviewCommandInstructions(text); ok {
-		return codexReviewCommand(session, instructions), nil
+		return codexReviewCommand(session, instructions)
 	}
 	args := []string{
 		"exec",
@@ -164,6 +167,11 @@ func PromptCommand(session commandbridge.Session, params runtimeacp.PromptParams
 	if effort := selectedConfig(session, "reasoning_effort"); effort != "" {
 		args = append(args, "--config", fmt.Sprintf("model_reasoning_effort=%q", effort))
 	}
+	mcpArgs, err := codexMCPConfigArgs(session.MCPServers)
+	if err != nil {
+		return adapterprocess.Spec{}, err
+	}
+	args = append(args, mcpArgs...)
 	if selectedConfig(session, "web_search") == "enabled" {
 		args = append(args, "--search")
 	}
@@ -175,7 +183,7 @@ func PromptCommand(session commandbridge.Session, params runtimeacp.PromptParams
 	}, nil
 }
 
-func codexReviewCommand(session commandbridge.Session, instructions string) adapterprocess.Spec {
+func codexReviewCommand(session commandbridge.Session, instructions string) (adapterprocess.Spec, error) {
 	args := []string{
 		"review",
 		"--uncommitted",
@@ -186,6 +194,11 @@ func codexReviewCommand(session commandbridge.Session, instructions string) adap
 	if effort := selectedConfig(session, "reasoning_effort"); effort != "" {
 		args = append(args, "--config", fmt.Sprintf("model_reasoning_effort=%q", effort))
 	}
+	mcpArgs, err := codexMCPConfigArgs(session.MCPServers)
+	if err != nil {
+		return adapterprocess.Spec{}, err
+	}
+	args = append(args, mcpArgs...)
 	if instructions = strings.TrimSpace(instructions); instructions != "" {
 		args = append(args, instructions)
 	}
@@ -193,7 +206,111 @@ func codexReviewCommand(session commandbridge.Session, instructions string) adap
 		Command: "codex",
 		Args:    args,
 		Dir:     session.CWD,
+	}, nil
+}
+
+func codexMCPConfigArgs(servers []runtimeacp.MCPServer) ([]string, error) {
+	var args []string
+	for i, server := range servers {
+		key := codexMCPServerKey(i, server)
+		value, err := codexMCPServerValue(server)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, "--config", "mcp_servers."+key+"="+value)
 	}
+	return args, nil
+}
+
+func codexMCPServerValue(server runtimeacp.MCPServer) (string, error) {
+	name := strings.TrimSpace(firstNonEmpty(server.Name, server.ID))
+	if name == "" {
+		name = "unnamed"
+	}
+	if strings.TrimSpace(server.URL) != "" {
+		if strings.TrimSpace(server.Command) != "" {
+			return "", fmt.Errorf("mcp server %q cannot set both url and command", name)
+		}
+		fields := []string{"url=" + tomlString(strings.TrimSpace(server.URL))}
+		if len(server.Headers) != 0 {
+			fields = append(fields, "http_headers="+tomlStringMap(httpHeadersMap(server.Headers)))
+		}
+		return "{" + strings.Join(fields, ",") + "}", nil
+	}
+	if strings.TrimSpace(server.Command) == "" {
+		return "", fmt.Errorf("mcp server %q must set url or command", name)
+	}
+	fields := []string{"command=" + tomlString(strings.TrimSpace(server.Command))}
+	if len(server.Args) != 0 {
+		fields = append(fields, "args="+tomlStringArray(server.Args))
+	}
+	if len(server.Env) != 0 {
+		fields = append(fields, "env="+tomlStringMap(envVariableMap(server.Env)))
+	}
+	return "{" + strings.Join(fields, ",") + "}", nil
+}
+
+var codexMCPKeyChars = regexp.MustCompile(`[^A-Za-z0-9_-]+`)
+
+func codexMCPServerKey(index int, server runtimeacp.MCPServer) string {
+	base := strings.TrimSpace(firstNonEmpty(server.ID, server.Name))
+	base = codexMCPKeyChars.ReplaceAllString(base, "_")
+	base = strings.Trim(base, "_-")
+	if base == "" {
+		base = "server"
+	}
+	return fmt.Sprintf("hecate_%02d_%s", index+1, base)
+}
+
+func httpHeadersMap(headers []runtimeacp.HTTPHeader) map[string]string {
+	values := make(map[string]string, len(headers))
+	for _, header := range headers {
+		name := strings.TrimSpace(header.Name)
+		if name != "" {
+			values[name] = header.Value
+		}
+	}
+	return values
+}
+
+func envVariableMap(env []runtimeacp.EnvVariable) map[string]string {
+	values := make(map[string]string, len(env))
+	for _, item := range env {
+		name := strings.TrimSpace(item.Name)
+		if name != "" {
+			values[name] = item.Value
+		}
+	}
+	return values
+}
+
+func tomlStringArray(values []string) string {
+	encoded := make([]string, 0, len(values))
+	for _, value := range values {
+		encoded = append(encoded, tomlString(value))
+	}
+	return "[" + strings.Join(encoded, ",") + "]"
+}
+
+func tomlStringMap(values map[string]string) string {
+	if len(values) == 0 {
+		return "{}"
+	}
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	fields := make([]string, 0, len(keys))
+	for _, key := range keys {
+		fields = append(fields, tomlString(key)+"="+tomlString(values[key]))
+	}
+	return "{" + strings.Join(fields, ",") + "}"
+}
+
+func tomlString(value string) string {
+	raw, _ := json.Marshal(value)
+	return string(raw)
 }
 
 func reviewCommandInstructions(text string) (string, bool) {
@@ -256,4 +373,13 @@ func selectedSandbox(session commandbridge.Session) string {
 		return value
 	}
 	return "workspace-write"
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }

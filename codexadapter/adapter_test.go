@@ -96,6 +96,23 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 	got, err := codexadapter.PromptCommand(commandbridge.Session{
 		CWD:                   "/work",
 		AdditionalDirectories: []string{"/extra", ""},
+		MCPServers: []runtimeacp.MCPServer{
+			{
+				ID:   "weather-http",
+				Name: "Weather HTTP",
+				URL:  "https://mcp.example.com/mcp",
+				Headers: []runtimeacp.HTTPHeader{
+					{Name: "X-Test", Value: "yes"},
+					{Name: "Authorization", Value: "Bearer token"},
+				},
+			},
+			{
+				Name:    "Local FS",
+				Command: "/bin/mcp",
+				Args:    []string{"--root", "/work"},
+				Env:     []runtimeacp.EnvVariable{{Name: "TOKEN", Value: "secret"}},
+			},
+		},
 		Config: map[string]string{
 			"model":            "gpt-5-codex",
 			"reasoning_effort": "high",
@@ -118,6 +135,8 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 		"--add-dir", "/extra",
 		"--model", "gpt-5-codex",
 		"--config", `model_reasoning_effort="high"`,
+		"--config", `mcp_servers.hecate_01_weather-http={url="https://mcp.example.com/mcp",http_headers={"Authorization"="Bearer token","X-Test"="yes"}}`,
+		"--config", `mcp_servers.hecate_02_Local_FS={command="/bin/mcp",args=["--root","/work"],env={"TOKEN"="secret"}}`,
 		"--search",
 		"hello codex",
 	}
@@ -130,6 +149,10 @@ func TestPromptCommandBuildsCodexReview(t *testing.T) {
 	got, err := codexadapter.PromptCommand(commandbridge.Session{
 		CWD:                   "/work",
 		AdditionalDirectories: []string{"/extra"},
+		MCPServers: []runtimeacp.MCPServer{{
+			Name: "Docs",
+			URL:  "https://docs.example.com/mcp",
+		}},
 		Config: map[string]string{
 			"model":            "gpt-5-codex",
 			"reasoning_effort": "high",
@@ -147,10 +170,23 @@ func TestPromptCommandBuildsCodexReview(t *testing.T) {
 		"--uncommitted",
 		"--config", `model="gpt-5-codex"`,
 		"--config", `model_reasoning_effort="high"`,
+		"--config", `mcp_servers.hecate_01_Docs={url="https://docs.example.com/mcp"}`,
 		"focus on tests",
 	}
 	if got.Command != "codex" || got.Dir != "/work" || !reflect.DeepEqual(got.Args, wantArgs) {
 		t.Fatalf("process spec = %#v, want codex review args %#v", got, wantArgs)
+	}
+}
+
+func TestPromptCommandRejectsUnsupportedMCPServer(t *testing.T) {
+	_, err := codexadapter.PromptCommand(commandbridge.Session{
+		CWD:        "/work",
+		MCPServers: []runtimeacp.MCPServer{{Name: "broken"}},
+	}, runtimeacp.PromptParams{
+		Prompt: []runtimeacp.ContentBlock{{Type: "text", Text: "hello codex"}},
+	})
+	if err == nil || !strings.Contains(err.Error(), `mcp server "broken" must set url or command`) {
+		t.Fatalf("PromptCommand error = %v, want unsupported MCP server error", err)
 	}
 }
 

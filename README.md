@@ -40,6 +40,8 @@ Implemented:
 - command-backed native Codex CLI session path using `codex exec`
 - ACP model, reasoning, sandbox, and web-search config options for the
   command-backed path
+- per-session ACP HTTP and stdio MCP server config propagation into Codex CLI
+  `-c mcp_servers.<name>=...` overrides
 - in-memory command-backed session load/resume/fork plus bounded transcript
   replay for multi-turn continuity while the adapter process is alive
 - command-backed `session/list` metadata, `config_option_update`
@@ -56,8 +58,10 @@ Not implemented yet:
 
 - vendor-specific durable/native persistent session semantics across adapter
   process restarts
-- complete vendor-specific permission/MCP/auth/slash-command mapping beyond
-  the adapter-owned `/review` command
+- complete vendor-specific permission/auth/slash-command mapping beyond the
+  adapter-owned `/review` command
+- vendor-native MCP tool permission and connection-lifecycle mapping beyond
+  passing per-session MCP server config into Codex
 - runtime config/auth/model discovery
 - production signing/provenance for release artifacts
 
@@ -106,9 +110,10 @@ machine-readable output.
 By default, the root ACP server owns lightweight ACP sessions and runs each
 prompt through `codex exec` in the session workspace. The command-backed path
 exposes ACP config options for model, reasoning effort, Codex sandbox mode, and
-Codex live web search, passes only provider-specific environment variables
-through the shared process runner, and runs Codex with `exec --json`. Known
-Codex JSONL events are
+Codex live web search, translates session MCP servers into temporary Codex
+`mcp_servers` config overrides, passes only provider-specific environment
+variables through the shared process runner, and runs Codex with `exec --json`.
+Known Codex JSONL events are
 translated into ACP assistant text, reasoning, tool-call, and usage updates;
 unknown JSONL events are ignored rather than shown as raw chat text. A generic
 `tool_call` still wraps the native Codex process execution so hosts can show the

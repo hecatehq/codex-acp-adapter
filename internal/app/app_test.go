@@ -253,7 +253,7 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 	workdir := t.TempDir()
 	extraDir := t.TempDir()
 	input := strings.NewReader(strings.Join([]string{
-		`{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"` + workdir + `","additionalDirectories":["` + extraDir + `"]}}`,
+		`{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"` + workdir + `","additionalDirectories":["` + extraDir + `"],"mcpServers":[{"id":"weather","name":"Weather","url":"https://mcp.example.com/mcp","headers":[{"name":"X-Test","value":"yes"}]}]}}`,
 		`{"jsonrpc":"2.0","id":2,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"model","value":"gpt-5-codex"}}`,
 		`{"jsonrpc":"2.0","id":3,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"reasoning_effort","value":"high"}}`,
 		`{"jsonrpc":"2.0","id":4,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"sandbox","value":"read-only"}}`,
@@ -273,6 +273,7 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 			"--add-dir", extraDir,
 			"--model", "gpt-5-codex",
 			"--config", `model_reasoning_effort="high"`,
+			"--config", `mcp_servers.hecate_01_weather={url="https://mcp.example.com/mcp",http_headers={"X-Test"="yes"}}`,
 			"--search",
 			"hello codex",
 		}

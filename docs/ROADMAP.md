@@ -25,7 +25,9 @@
 - use `acp-adapter-kit/commandbridge` for the first native direct-CLI path:
   one lightweight ACP session per workspace, one `codex exec` process per
   prompt, optional `--search` when the ACP web-search config is enabled, stdout
-  forwarded as assistant text, and ACP cancel mapped to process cancellation
+  forwarded as assistant text, ACP HTTP/stdio MCP server configs mapped to
+  Codex `-c mcp_servers.<name>=...` overrides, and ACP cancel mapped to process
+  cancellation
 - use `acp-adapter-kit/process` for every subprocess boundary
 - use `acp-adapter-kit/runtimeproc` as the only process-backed runtime launcher
 - use `acp-adapter-kit/runtimejsonrpc` for newline-delimited JSON-RPC over
@@ -75,8 +77,9 @@
   SDK request emits `clientCapabilities.auth` when client capabilities are set,
   which would change the adapter's current initialize wire shape
 - expand the native Codex integration boundary beyond `codex exec`
-- implement auth/session/prompt/cancel/config/mcp/tool mappings that are not
-  covered by the first command-backed path
+- implement auth/session/prompt/cancel/config/tool mappings, plus native MCP
+  lifecycle and tool-approval mappings, that are not covered by the first
+  command-backed path
 - port the edge cases recorded in `SOURCE_REVIEW.md`
 
 ## Phase 4: Release and Hecate Integration
