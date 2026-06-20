@@ -177,6 +177,8 @@ Keep this repository's tests focused on Codex-specific adapter behavior:
 - `doctor` command defaults for the Codex binary and Codex environment list;
 - runtime flag wiring from Cobra into the shared runtime host;
 - command-backed `codex exec` argv construction and config-option mapping;
+- command-backed ACP `authenticate` mapping to the native `codex login`
+  command;
 - command-backed ACP `logout` mapping to the native `codex logout` command;
 - Codex-specific prompt, tool, permission, config, model, MCP, auth, and session
   mapping as those features land.

@@ -26,6 +26,7 @@ const (
 )
 
 const configDefault = "__default__"
+const authMethodAgentLogin = "agent-login"
 
 func NewCLISpec(version string, stdin io.Reader, stdout io.Writer, stderr io.Writer) adaptercli.Spec {
 	return adaptercli.Spec{
@@ -68,11 +69,21 @@ func CommandSpec() *commandbridge.Spec {
 	return &commandbridge.Spec{
 		Options:           ConfigOptions(),
 		Commands:          AvailableCommands(),
+		AuthMethods:       AuthMethods(),
 		IncludeTranscript: true,
 		BuildPrompt:       PromptCommand,
+		BuildAuthenticate: AuthenticateCommand,
 		BuildLogout:       LogoutCommand,
 		NewStreamParser:   NewStreamParser,
 	}
+}
+
+func AuthMethods() []acp.AuthMethod {
+	return []acp.AuthMethod{{
+		ID:          authMethodAgentLogin,
+		Name:        "Codex login",
+		Description: "Sign in with the local Codex CLI.",
+	}}
 }
 
 func AvailableCommands() []commandbridge.AvailableCommand {
@@ -200,6 +211,21 @@ func LogoutCommand() (adapterprocess.Spec, error) {
 	return adapterprocess.Spec{
 		Command: "codex",
 		Args:    []string{"logout"},
+		Dir:     dir,
+	}, nil
+}
+
+func AuthenticateCommand(methodID string) (adapterprocess.Spec, error) {
+	if strings.TrimSpace(methodID) != authMethodAgentLogin {
+		return adapterprocess.Spec{}, fmt.Errorf("unsupported auth method %q", methodID)
+	}
+	dir, err := os.Getwd()
+	if err != nil {
+		return adapterprocess.Spec{}, err
+	}
+	return adapterprocess.Spec{
+		Command: "codex",
+		Args:    []string{"login"},
 		Dir:     dir,
 	}, nil
 }

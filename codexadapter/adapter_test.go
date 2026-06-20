@@ -39,11 +39,23 @@ func TestInitializeAdvertisesLoadSession(t *testing.T) {
 	var result struct {
 		AgentCapabilities struct {
 			LoadSession bool `json:"loadSession"`
+			Auth        struct {
+				Logout map[string]any `json:"logout"`
+			} `json:"auth"`
 		} `json:"agentCapabilities"`
+		AuthMethods []struct {
+			ID string `json:"id"`
+		} `json:"authMethods"`
 	}
 	resp.ResultInto(t, &result)
 	if !result.AgentCapabilities.LoadSession {
 		t.Fatal("loadSession = false, want true")
+	}
+	if result.AgentCapabilities.Auth.Logout == nil {
+		t.Fatal("auth.logout = nil, want advertised logout capability")
+	}
+	if len(result.AuthMethods) != 1 || result.AuthMethods[0].ID != "agent-login" {
+		t.Fatalf("authMethods = %#v, want agent-login", result.AuthMethods)
 	}
 }
 
@@ -53,8 +65,11 @@ func TestNewCLISpecExposesLibraryContract(t *testing.T) {
 	if spec.Info.Name != codexadapter.Name || spec.Info.Version != "2.0.0" {
 		t.Fatalf("spec.Info = %#v", spec.Info)
 	}
-	if spec.Command == nil || spec.Command.BuildPrompt == nil || spec.Command.BuildLogout == nil || spec.Command.NewStreamParser == nil || len(spec.Command.Options) != 4 || len(spec.Command.Commands) != 2 || !spec.Command.IncludeTranscript {
+	if spec.Command == nil || spec.Command.BuildPrompt == nil || spec.Command.BuildAuthenticate == nil || spec.Command.BuildLogout == nil || spec.Command.NewStreamParser == nil || len(spec.Command.AuthMethods) != 1 || len(spec.Command.Options) != 4 || len(spec.Command.Commands) != 2 || !spec.Command.IncludeTranscript {
 		t.Fatalf("command spec = %#v, want command-backed bridge with config options and commands", spec.Command)
+	}
+	if spec.Command.AuthMethods[0].ID != "agent-login" || spec.Command.AuthMethods[0].Name != "Codex login" {
+		t.Fatalf("auth methods = %#v, want Codex login", spec.Command.AuthMethods)
 	}
 	if spec.Command.Commands[0].Name != "review" || spec.Command.Commands[0].InputHint == "" ||
 		spec.Command.Commands[1].Name != "init" || spec.Command.Commands[1].InputHint == "" {
@@ -105,6 +120,24 @@ func TestLogoutCommandUsesNativeCodexCLIOnly(t *testing.T) {
 	assertNoPackageRunnerCommand(t, got.Command)
 	if got.Command != "codex" || got.Dir != cwd || !reflect.DeepEqual(got.Args, []string{"logout"}) {
 		t.Fatalf("process spec = %#v, want codex logout", got)
+	}
+}
+
+func TestAuthenticateCommandUsesNativeCodexCLIOnly(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	got, err := codexadapter.AuthenticateCommand("agent-login")
+	if err != nil {
+		t.Fatalf("AuthenticateCommand: %v", err)
+	}
+	assertNoPackageRunnerCommand(t, got.Command)
+	if got.Command != "codex" || got.Dir != cwd || !reflect.DeepEqual(got.Args, []string{"login"}) {
+		t.Fatalf("process spec = %#v, want codex login", got)
+	}
+	if _, err := codexadapter.AuthenticateCommand("browser-login"); err == nil || !strings.Contains(err.Error(), "unsupported auth method") {
+		t.Fatalf("AuthenticateCommand unsupported error = %v, want unsupported auth method", err)
 	}
 }
 
@@ -274,6 +307,24 @@ printf 'logged out\n'
 	resp.ResultInto(t, &result)
 	if len(result) != 0 {
 		t.Fatalf("logout result = %#v, want empty object", result)
+	}
+}
+
+func TestNewServerRunsAuthenticateCommand(t *testing.T) {
+	installFakeCommand(t, "codex", `
+if [ "$1" != "login" ]; then
+  echo "unexpected command: $*" >&2
+  exit 64
+fi
+printf 'logged in\n'
+	`)
+	client := acptest.NewClient(t, codexadapter.NewServer("test"))
+
+	resp := client.Request("authenticate", map[string]any{"methodId": "agent-login"})
+	var result map[string]any
+	resp.ResultInto(t, &result)
+	if len(result) != 0 {
+		t.Fatalf("authenticate result = %#v, want empty object", result)
 	}
 }
 
