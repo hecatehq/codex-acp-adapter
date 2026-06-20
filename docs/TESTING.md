@@ -142,6 +142,8 @@ production-grade.
   command prompts, and prompt completion
 - source-shaped Codex stream fixtures for permission requests, shell/tool
   lifecycle updates, reasoning chunks, usage, and terminal stop reasons
+- auth-required error classification for native Codex failures, including the
+  HTTP 401 "missing bearer or basic authentication" shape
 - opt-in real Codex CLI smoke coverage that requires an authenticated local
   `codex` binary and proves a real prompt completes through the ACP command
   bridge
@@ -169,7 +171,6 @@ vendor-native Codex parity:
 - vendor-specific durable persistent session storage and restore semantics
   across adapter process restarts
 - real vendor-runtime cancellation and no double-settle behavior
-- auth-required error classification from real Codex CLI failures
 - model/config option discovery beyond the initial static command-backed
   selectors
 - provider-native permission response edge cases beyond parsed request mapping

@@ -2,6 +2,7 @@ package codexadapter_test
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,6 +13,7 @@ import (
 	"github.com/hecatehq/acp-adapter-kit/acptest"
 	"github.com/hecatehq/acp-adapter-kit/adaptertest"
 	"github.com/hecatehq/acp-adapter-kit/commandbridge"
+	adapterprocess "github.com/hecatehq/acp-adapter-kit/process"
 	"github.com/hecatehq/acp-adapter-kit/runtimeacp"
 	"github.com/hecatehq/codex-acp-adapter/codexadapter"
 )
@@ -403,6 +405,15 @@ exit 1
 	raw, _ := json.Marshal(responses[2].Error.Data)
 	if !strings.Contains(string(raw), "codex login") {
 		t.Fatalf("auth error data = %s, want login hint", raw)
+	}
+}
+
+func TestCommandAuthRequiredMapsCodexHTTP401(t *testing.T) {
+	result := adapterprocess.Result{
+		Stderr: []byte("401 Unauthorized: Missing bearer or basic authentication"),
+	}
+	if !codexadapter.CommandAuthRequired(result, errors.New("exit status 1")) {
+		t.Fatal("CommandAuthRequired returned false, want auth required for Codex 401")
 	}
 }
 
