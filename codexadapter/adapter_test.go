@@ -53,7 +53,7 @@ func TestNewCLISpecExposesLibraryContract(t *testing.T) {
 	if spec.Info.Name != codexadapter.Name || spec.Info.Version != "2.0.0" {
 		t.Fatalf("spec.Info = %#v", spec.Info)
 	}
-	if spec.Command == nil || spec.Command.BuildPrompt == nil || spec.Command.NewStreamParser == nil || len(spec.Command.Options) != 4 || len(spec.Command.Commands) != 2 || !spec.Command.IncludeTranscript {
+	if spec.Command == nil || spec.Command.BuildPrompt == nil || spec.Command.BuildLogout == nil || spec.Command.NewStreamParser == nil || len(spec.Command.Options) != 4 || len(spec.Command.Commands) != 2 || !spec.Command.IncludeTranscript {
 		t.Fatalf("command spec = %#v, want command-backed bridge with config options and commands", spec.Command)
 	}
 	if spec.Command.Commands[0].Name != "review" || spec.Command.Commands[0].InputHint == "" ||
@@ -90,6 +90,21 @@ func TestPromptCommandUsesNativeCodexCLIOnly(t *testing.T) {
 	assertNoPackageRunnerCommand(t, spec.Doctor.Binary)
 	if spec.Doctor.Binary != "codex" {
 		t.Fatalf("doctor binary = %q, want native codex CLI", spec.Doctor.Binary)
+	}
+}
+
+func TestLogoutCommandUsesNativeCodexCLIOnly(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	got, err := codexadapter.LogoutCommand()
+	if err != nil {
+		t.Fatalf("LogoutCommand: %v", err)
+	}
+	assertNoPackageRunnerCommand(t, got.Command)
+	if got.Command != "codex" || got.Dir != cwd || !reflect.DeepEqual(got.Args, []string{"logout"}) {
+		t.Fatalf("process spec = %#v, want codex logout", got)
 	}
 }
 
@@ -241,6 +256,24 @@ func TestNewServerPublishesAvailableCommands(t *testing.T) {
 		update.Update.AvailableCommands[1].Name != "init" ||
 		update.Update.AvailableCommands[1].Input.Unstructured.Hint != "optional instruction focus" {
 		t.Fatalf("available commands = %#v, want review/init commands", update)
+	}
+}
+
+func TestNewServerRunsLogoutCommand(t *testing.T) {
+	installFakeCommand(t, "codex", `
+if [ "$1" != "logout" ]; then
+  echo "unexpected command: $*" >&2
+  exit 64
+fi
+printf 'logged out\n'
+	`)
+	client := acptest.NewClient(t, codexadapter.NewServer("test"))
+
+	resp := client.Request("logout", map[string]any{})
+	var result map[string]any
+	resp.ResultInto(t, &result)
+	if len(result) != 0 {
+		t.Fatalf("logout result = %#v, want empty object", result)
 	}
 }
 

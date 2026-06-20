@@ -54,14 +54,15 @@ Implemented:
   tool-call, and usage updates, including provider-native shell, file, patch,
   web, MCP, image, plan, TODO, goal, and review tool classifications, plus
   generic command `tool_call` activity for the native Codex process
+- ACP `logout` mapped to the native `codex logout` command
 - CI and tag-driven release packaging for unsigned alpha binaries
 
 Not implemented yet:
 
 - vendor-specific durable/native persistent session semantics across adapter
   process restarts
-- complete vendor-specific permission/auth/slash-command mapping beyond the
-  adapter-owned `/review` and `/init` commands
+- complete vendor-specific permission/auth/slash-command mapping beyond ACP
+  `logout` and the adapter-owned `/review` and `/init` commands
 - vendor-native MCP tool permission and connection-lifecycle mapping beyond
   passing per-session MCP server config into Codex
 - runtime config/auth/model discovery
@@ -131,6 +132,7 @@ The adapter advertises `/review` and `/init` as ACP available commands:
 `/review` maps to Codex's native `review --uncommitted` command, while `/init`
 is passed through `codex exec` as a normal Codex slash prompt so Codex can
 inspect the workspace and create or update repository agent instructions.
+The ACP `logout` method maps to `codex logout`.
 
 The root ACP server can also launch an explicit subprocess-backed ACP runtime
 with `--runtime-binary`, `--runtime-workdir`, and repeated `--runtime-arg`
