@@ -1,17 +1,17 @@
 # Source Review
 
-This scaffold was created after inspecting the current npm package and upstream
-adapter source. The goal is to replace npm-managed runtime launchers without
-losing important protocol behavior.
+This scaffold was created after inspecting the published adapter artifact and
+upstream adapter source. The goal is to remove package-manager runtime launchers
+without losing important protocol behavior.
 
 ## Sources Inspected
 
-- `@zed-industries/codex-acp@0.16.0` npm tarball
+- published `zed-industries/codex-acp` package artifact, version 0.16.0
 - `zed-industries/codex-acp` source repository, shallow clone
 
-## What the npm Package Does
+## What the Published Package Does
 
-The published npm package is mostly a platform launcher:
+The published package is mostly a platform launcher:
 
 - maps Node `process.platform` and `process.arch` to an optional dependency such
   as `@zed-industries/codex-acp-linux-x64`
@@ -19,8 +19,9 @@ The published npm package is mostly a platform launcher:
 - spawns the resolved binary with inherited stdio
 - exits on unsupported platform/architecture or missing optional dependency
 
-The security issue is not complex bridge logic in the npm entrypoint; it is the
-runtime dependency on npm package resolution and optional binary hydration.
+The security issue is not complex bridge logic in the package entrypoint; it is
+the runtime dependency on package-manager resolution and optional binary
+hydration.
 
 ## Behavior the Native Adapter Handles
 
@@ -50,7 +51,7 @@ ACP mapping above.
 
 Minimum safety requirements:
 
-- no runtime `npx`
+- no runtime package-manager launchers
 - no shell command construction
 - fixed argv arrays
 - explicit environment allowlist
