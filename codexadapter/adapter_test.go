@@ -401,6 +401,93 @@ func TestCodexStreamParserMapsJSONL(t *testing.T) {
 	}
 }
 
+func TestCodexStreamParserClassifiesProviderTools(t *testing.T) {
+	tests := []struct {
+		name  string
+		item  string
+		kind  string
+		title string
+	}{
+		{
+			name:  "shell",
+			item:  `{"type":"local_shell_call","id":"shell-1","command":"go test ./..."}`,
+			kind:  "execute",
+			title: "go test ./...",
+		},
+		{
+			name:  "file read",
+			item:  `{"type":"file_read","id":"file-1","path":"README.md"}`,
+			kind:  "read",
+			title: "README.md",
+		},
+		{
+			name:  "file write",
+			item:  `{"type":"file_write","id":"file-2","path":"README.md"}`,
+			kind:  "edit",
+			title: "README.md",
+		},
+		{
+			name:  "patch",
+			item:  `{"type":"apply_patch","id":"patch-1","title":"Apply patch"}`,
+			kind:  "edit",
+			title: "Apply patch",
+		},
+		{
+			name:  "web search",
+			item:  `{"type":"web_search_call","id":"web-1","query":"golang acp"}`,
+			kind:  "fetch",
+			title: "golang acp",
+		},
+		{
+			name:  "mcp",
+			item:  `{"type":"mcp_tool_call","id":"mcp-1","server":"docs","name":"search"}`,
+			kind:  "mcp",
+			title: "search",
+		},
+		{
+			name:  "image",
+			item:  `{"type":"image_generation_call","id":"image-1","prompt":"diagram"}`,
+			kind:  "image",
+			title: "diagram",
+		},
+		{
+			name:  "plan",
+			item:  `{"type":"update_plan","id":"plan-1","title":"Update plan"}`,
+			kind:  "plan",
+			title: "Update plan",
+		},
+		{
+			name:  "todo",
+			item:  `{"type":"todo_write","id":"todo-1","title":"Update TODOs"}`,
+			kind:  "todo",
+			title: "Update TODOs",
+		},
+		{
+			name:  "review",
+			item:  `{"type":"code_review","id":"review-1","title":"Review changes"}`,
+			kind:  "review",
+			title: "Review changes",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := codexadapter.NewStreamParser(commandbridge.Session{}, runtimeacp.PromptParams{})
+			events, err := parser.Parse([]byte(`{"method":"item/started","params":{"item":` + tt.item + `}}` + "\n"))
+			if err != nil {
+				t.Fatalf("Parse returned error: %v", err)
+			}
+			if len(events) != 1 {
+				t.Fatalf("events len = %d, want one tool start: %#v", len(events), events)
+			}
+			if events[0].Update["sessionUpdate"] != "tool_call" ||
+				events[0].Update["kind"] != tt.kind ||
+				events[0].Update["title"] != tt.title {
+				t.Fatalf("tool start = %#v, want %s %q", events[0].Update, tt.kind, tt.title)
+			}
+		})
+	}
+}
+
 type sessionUpdate struct {
 	Update struct {
 		SessionUpdate     string          `json:"sessionUpdate"`

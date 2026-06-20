@@ -119,9 +119,16 @@ func isCodexToolItem(item map[string]any) bool {
 		strings.Contains(itemType, "function_call") ||
 		strings.Contains(itemType, "exec") ||
 		strings.Contains(itemType, "shell") ||
+		strings.Contains(itemType, "file") ||
 		strings.Contains(itemType, "apply_patch") ||
 		strings.Contains(itemType, "write_stdin") ||
-		strings.Contains(itemType, "web_search")
+		strings.Contains(itemType, "web_search") ||
+		strings.Contains(itemType, "mcp") ||
+		strings.Contains(itemType, "image") ||
+		strings.Contains(itemType, "plan") ||
+		strings.Contains(itemType, "todo") ||
+		strings.Contains(itemType, "goal") ||
+		strings.Contains(itemType, "review")
 }
 
 func codexItemType(item map[string]any) string {
@@ -141,6 +148,9 @@ func codexToolTitle(item map[string]any) string {
 			return title
 		}
 	}
+	if title := firstString(item, "query", "path", "prompt", "url"); title != "" {
+		return title
+	}
 	if kind := codexItemType(item); kind != "" {
 		return strings.ReplaceAll(kind, "_", " ")
 	}
@@ -151,10 +161,24 @@ func codexToolKind(item map[string]any) string {
 	kind := codexItemType(item)
 	title := strings.ToLower(codexToolTitle(item))
 	switch {
-	case strings.Contains(kind, "apply_patch"), strings.Contains(kind, "write_stdin"), strings.Contains(title, "apply_patch"), strings.Contains(title, "edit"):
-		return "edit"
-	case strings.Contains(kind, "web_search"), strings.Contains(title, "web search"):
+	case strings.Contains(kind, "mcp"):
+		return "mcp"
+	case strings.Contains(kind, "web_search"), strings.Contains(kind, "web_fetch"), strings.Contains(kind, "webpage"), strings.Contains(title, "web search"):
 		return "fetch"
+	case strings.Contains(kind, "file_read"), strings.Contains(kind, "read_file"), strings.Contains(title, "read file"):
+		return "read"
+	case strings.Contains(kind, "apply_patch"), strings.Contains(kind, "write_stdin"), strings.Contains(kind, "file_write"), strings.Contains(kind, "write_file"), strings.Contains(title, "apply_patch"), strings.Contains(title, "edit"):
+		return "edit"
+	case strings.Contains(kind, "image"):
+		return "image"
+	case strings.Contains(kind, "plan"):
+		return "plan"
+	case strings.Contains(kind, "todo"):
+		return "todo"
+	case strings.Contains(kind, "goal"):
+		return "goal"
+	case strings.Contains(kind, "review"):
+		return "review"
 	case strings.Contains(kind, "tool_search"), strings.Contains(title, "search"):
 		return "search"
 	case strings.Contains(kind, "exec"), strings.Contains(kind, "shell"), strings.Contains(title, "command"), strings.Contains(title, "bash"):
