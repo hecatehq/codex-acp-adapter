@@ -231,10 +231,16 @@ func codexToolID(item map[string]any) string {
 }
 
 func codexToolTitle(item map[string]any) string {
+	if title := codexMCPToolTitle(item); title != "" {
+		return title
+	}
 	if title := firstString(item, "title", "display_command", "displayCommand", "command", "name", "namespace"); title != "" {
 		return title
 	}
 	if action := mapValue(item["action"]); len(action) > 0 {
+		if title := codexMCPToolTitle(action); title != "" {
+			return title
+		}
 		if title := firstString(action, "display_command", "displayCommand", "command", "name", "namespace"); title != "" {
 			return title
 		}
@@ -246,6 +252,22 @@ func codexToolTitle(item map[string]any) string {
 		return strings.ReplaceAll(kind, "_", " ")
 	}
 	return "Codex tool"
+}
+
+func codexMCPToolTitle(item map[string]any) string {
+	explicitServer := firstString(item, "server", "server_name", "serverName")
+	if explicitServer == "" && !strings.Contains(codexItemType(item), "mcp") {
+		return ""
+	}
+	server := explicitServer
+	if server == "" {
+		server = firstString(item, "namespace")
+	}
+	tool := firstString(item, "tool", "tool_name", "toolName", "name")
+	if server == "" || tool == "" {
+		return ""
+	}
+	return server + "/" + tool
 }
 
 func codexToolKind(item map[string]any) string {
