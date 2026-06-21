@@ -137,8 +137,9 @@ production-grade.
   `-c mcp_servers.<name>=...` overrides, streamed JSONL parsing into ACP
   assistant text, reasoning, usage, terminal stop reasons, and provider-native
   tool classifications for shell, file, patch, web, MCP, image, plan, TODO,
-  goal, and review updates, generic command `tool_call` activity for the outer
-  Codex process,
+  goal, and review updates, failed status mapping for rejected/denied/blocked
+  or timed-out provider tool results, generic command `tool_call` activity for
+  the outer Codex process,
   in-memory load/resume/fork capability, bounded transcript replay for later
   command prompts, and prompt completion
 - source-shaped Codex stream fixtures for permission requests, including
@@ -176,11 +177,12 @@ vendor-native Codex parity:
 - real vendor-runtime cancellation and no double-settle behavior
 - model/config option discovery beyond the initial static command-backed
   selectors
-- provider-native permission response edge cases beyond parsed request mapping
+- provider-native permission response edge cases beyond parsed request/result
+  status mapping
   and the selected Codex sandbox mode
 - deeper provider-native review semantics beyond classifying review tool
   updates
-- late permission responses and rejected/denied provider tools
+- late permission responses after cancellation
 - vendor MCP connection lifecycle semantics and MCP tool approval elicitations
 - production release signing/provenance
 

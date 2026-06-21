@@ -304,14 +304,34 @@ func codexToolKind(item map[string]any) string {
 }
 
 func codexToolStatus(item map[string]any) string {
-	status := strings.ToLower(firstString(item, "status", "state"))
-	if status == "failed" || status == "error" || status == "cancelled" {
+	status := strings.ToLower(firstString(item, "status", "state", "outcome", "result_status", "resultStatus"))
+	if codexToolStatusFailed(status) {
 		return "failed"
 	}
 	if code := firstInt(item, "exit_code", "exitCode"); code != 0 {
 		return "failed"
 	}
 	return "completed"
+}
+
+func codexToolStatusFailed(status string) bool {
+	switch {
+	case status == "":
+		return false
+	case strings.Contains(status, "fail"),
+		strings.Contains(status, "error"),
+		strings.Contains(status, "cancel"),
+		strings.Contains(status, "reject"),
+		strings.Contains(status, "deni"),
+		strings.Contains(status, "block"),
+		strings.Contains(status, "timeout"),
+		strings.Contains(status, "timed_out"),
+		strings.Contains(status, "interrupt"),
+		strings.Contains(status, "abort"):
+		return true
+	default:
+		return false
+	}
 }
 
 func codexToolRawInput(item map[string]any) any {
