@@ -914,6 +914,48 @@ func TestCodexStreamParserPreservesStructuredShellOutput(t *testing.T) {
 	}
 }
 
+func TestCodexStreamParserMarksProviderRejectedToolsFailed(t *testing.T) {
+	tests := []struct {
+		name string
+		item string
+	}{
+		{
+			name: "denied",
+			item: `{"type":"local_shell_call","id":"tool-1","status":"denied","stdout":"permission denied"}`,
+		},
+		{
+			name: "rejected",
+			item: `{"type":"mcp_tool_call","id":"tool-1","state":"rejected","server":"docs","tool":"search"}`,
+		},
+		{
+			name: "blocked",
+			item: `{"type":"web_search_call","id":"tool-1","outcome":"blocked_by_policy","query":"secret"}`,
+		},
+		{
+			name: "timed out",
+			item: `{"type":"local_shell_call","id":"tool-1","resultStatus":"timed_out","command":"sleep 60"}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := codexadapter.NewStreamParser(commandbridge.Session{}, runtimeacp.PromptParams{})
+
+			events, err := parser.Parse([]byte(`{"method":"item/completed","params":{"item":` + tt.item + `}}` + "\n"))
+			if err != nil {
+				t.Fatalf("Parse returned error: %v", err)
+			}
+			if len(events) != 1 {
+				t.Fatalf("events len = %d, want one tool finish: %#v", len(events), events)
+			}
+			if events[0].Update["sessionUpdate"] != "tool_call_update" ||
+				events[0].Update["toolCallId"] != "tool-1" ||
+				events[0].Update["status"] != "failed" {
+				t.Fatalf("tool finish = %#v, want failed tool finish", events[0].Update)
+			}
+		})
+	}
+}
+
 func TestCodexStreamParserClassifiesProviderTools(t *testing.T) {
 	tests := []struct {
 		name  string
