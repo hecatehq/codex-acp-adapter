@@ -149,8 +149,9 @@ production-grade.
 - auth-required error classification for native Codex failures, including the
   HTTP 401 "missing bearer or basic authentication" shape
 - opt-in real Codex CLI smoke coverage that requires an authenticated local
-  `codex` binary and proves a real prompt completes through the ACP command
-  bridge
+  `codex` binary and proves session list/load, a real prompt completion, a
+  real tool/file update flow with permission auto-approval, and cancellation
+  with no double-settle through the ACP command bridge
 - shared adapter conformance checks for the Hecate-facing ACP initialize
   contract, advertised auth/logout capabilities, session config selectors, and
   available slash-command names
@@ -174,7 +175,7 @@ vendor-native Codex parity:
 
 - vendor-specific durable persistent session storage and restore semantics
   across adapter process restarts
-- real vendor-runtime cancellation and no double-settle behavior
+- wedged-runtime forced cancellation behavior
 - model/config option discovery beyond the initial static command-backed
   selectors
 - provider-native permission response edge cases beyond parsed request/result
@@ -223,6 +224,8 @@ make real-cli-smoke
 ```
 
 The target sets `ACP_ADAPTER_REAL_CLI_SMOKE=1` and runs the `real_cli` build-tag
-test. It creates a temporary workspace, opens an ACP session, sends one minimal
-prompt through the native `codex` command bridge, and asserts that the prompt
-finishes with parsed assistant output.
+test. It creates temporary workspaces, opens ACP sessions, verifies list/load,
+sends one minimal prompt through the native `codex` command bridge, runs a
+tool/file update prompt with permission requests auto-approved by the test
+client, and cancels one long-running prompt to assert a single cancelled prompt
+settlement.
