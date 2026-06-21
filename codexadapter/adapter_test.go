@@ -24,8 +24,17 @@ func TestInfoPinsCodexCapabilities(t *testing.T) {
 	if info.Name != codexadapter.Name || info.Title != codexadapter.Title || info.Version != "1.2.3" {
 		t.Fatalf("info = %#v, want Codex adapter metadata", info)
 	}
-	if !info.Capabilities.Images || !info.Capabilities.EmbeddedContext || !info.Capabilities.MCPHTTP || info.Capabilities.MCPSSE || !info.Capabilities.LoadSession {
-		t.Fatalf("capabilities = %#v, want image + embedded context + MCP HTTP + load session", info.Capabilities)
+	if !info.Capabilities.Images ||
+		!info.Capabilities.EmbeddedContext ||
+		!info.Capabilities.MCPHTTP ||
+		info.Capabilities.MCPSSE ||
+		!info.Capabilities.LoadSession ||
+		!info.Capabilities.SessionList ||
+		!info.Capabilities.SessionResume ||
+		!info.Capabilities.SessionClose ||
+		!info.Capabilities.SessionDelete ||
+		!info.Capabilities.AdditionalDirectories {
+		t.Fatalf("capabilities = %#v, want Codex stable ACP surface", info.Capabilities)
 	}
 	if codexadapter.NewServer("1.2.3") == nil {
 		t.Fatal("NewServer returned nil")
@@ -37,16 +46,21 @@ func TestInfoPinsCodexCapabilities(t *testing.T) {
 
 func TestInitializeAdvertisesLoadSession(t *testing.T) {
 	adaptertest.AssertInitializeContract(t, codexadapter.NewServer("test"), adaptertest.InitializeContract{
-		Name:            codexadapter.Name,
-		Title:           codexadapter.Title,
-		Version:         "test",
-		Images:          true,
-		EmbeddedContext: true,
-		MCPHTTP:         true,
-		MCPSSE:          false,
-		LoadSession:     true,
-		Logout:          true,
-		AuthMethodIDs:   []string{"agent-login"},
+		Name:                  codexadapter.Name,
+		Title:                 codexadapter.Title,
+		Version:               "test",
+		Images:                true,
+		EmbeddedContext:       true,
+		MCPHTTP:               true,
+		MCPSSE:                false,
+		LoadSession:           true,
+		SessionList:           true,
+		SessionResume:         true,
+		SessionClose:          true,
+		SessionDelete:         true,
+		AdditionalDirectories: true,
+		Logout:                true,
+		AuthMethodIDs:         []string{"agent-login"},
 	})
 }
 
