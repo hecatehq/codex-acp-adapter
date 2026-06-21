@@ -710,13 +710,13 @@ func TestCodexStreamParserMapsPermissionRequestAliases(t *testing.T) {
 		wantOpts   []commandbridge.PermissionOption
 	}{
 		{
-			name:       "snake case tool call and permission options",
-			line:       `{"method":"approval.requested","params":{"tool_call":{"tool_call_id":"mcp-1","type":"mcp_tool_call","action":{"name":"search_docs","query":"permissions"}},"permission_options":[{"option_id":"allow-session","name":"Allow for session","kind":"allow_always"},{"option_id":"deny-once","name":"Deny once","kind":"reject_once"}]}}`,
+			name:       "snake case mcp tool call and permission options",
+			line:       `{"method":"approval.requested","params":{"tool_call":{"tool_call_id":"mcp-1","type":"mcp_tool_call","server":"docs","tool":"search_docs","arguments":{"query":"permissions"}},"permission_options":[{"option_id":"allow-session","name":"Allow for session","kind":"allow_always"},{"option_id":"deny-once","name":"Deny once","kind":"reject_once"}]}}`,
 			wantID:     "mcp-1",
-			wantTitle:  "search_docs",
+			wantTitle:  "docs/search_docs",
 			wantKind:   "mcp",
-			wantRawKey: "name",
-			wantRawVal: "search_docs",
+			wantRawKey: "query",
+			wantRawVal: "permissions",
 			wantOpts: []commandbridge.PermissionOption{
 				{OptionID: "allow-session", Name: "Allow for session", Kind: "allow_always"},
 				{OptionID: "deny-once", Name: "Deny once", Kind: "reject_once"},
@@ -955,7 +955,7 @@ func TestCodexStreamParserClassifiesProviderTools(t *testing.T) {
 			name:  "mcp",
 			item:  `{"type":"mcp_tool_call","id":"mcp-1","server":"docs","name":"search"}`,
 			kind:  "mcp",
-			title: "search",
+			title: "docs/search",
 		},
 		{
 			name:  "image",
