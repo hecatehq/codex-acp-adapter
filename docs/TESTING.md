@@ -184,7 +184,7 @@ vendor-native Codex parity:
   updates
 - late permission responses after cancellation
 - vendor MCP connection lifecycle semantics and MCP tool approval elicitations
-- production release signing/provenance
+- unresolved stable-release parity gates listed in `docs/STABLE_READINESS.md`
 
 ## Test Strategy
 

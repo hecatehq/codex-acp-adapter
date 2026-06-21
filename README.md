@@ -18,7 +18,8 @@ vendor-native parity and production release hardening.
   sessions, auth, model/config options, permission requests, MCP servers,
   tool updates, terminal output, slash commands, review/init workflows, and
   cancellation.
-- Ship deterministic, signed Go release binaries.
+- Ship deterministic, checksum-verified, provenance-attested Go release
+  binaries.
 
 ## Current Status
 
@@ -58,7 +59,8 @@ Implemented:
   Codex process
 - ACP `authenticate` mapped to the native `codex login` command
 - ACP `logout` mapped to the native `codex logout` command
-- CI and tag-driven release packaging for unsigned alpha binaries
+- CI and tag-driven release packaging for checksum-verified,
+  provenance-attested alpha binaries
 
 Not implemented yet:
 
@@ -71,7 +73,7 @@ Not implemented yet:
 - deeper provider-native slash-command/review semantics beyond the
   adapter-owned `/review` and `/init` command surface
 - runtime config/auth/model discovery
-- production signing/provenance for release artifacts
+- deeper stable-release parity gates in `docs/STABLE_READINESS.md`
 
 ## Development
 
@@ -101,6 +103,8 @@ go run ./cmd/codex-acp-adapter doctor
 See [docs/TESTING.md](docs/TESTING.md) for what is covered today and what still
 needs production-grade/deeper vendor-native parity coverage.
 See [docs/RELEASE.md](docs/RELEASE.md) for the tag-driven release flow.
+See [docs/STABLE_READINESS.md](docs/STABLE_READINESS.md) for the gate before a
+stable adapter tag.
 
 ## CLI Contract
 
