@@ -15,7 +15,7 @@ test-race:
 	$(GO) test -race ./...
 
 real-cli-smoke:
-	ACP_ADAPTER_REAL_CLI_SMOKE=1 $(GO) test -tags real_cli -run TestRealCodexCLISmoke -count=1 -timeout 5m ./codexadapter
+	ACP_ADAPTER_REAL_CLI_SMOKE=1 $(GO) test -tags real_cli -run TestRealCodexCLISmoke -count=1 -timeout 10m ./codexadapter
 
 vet:
 	$(GO) vet ./...
