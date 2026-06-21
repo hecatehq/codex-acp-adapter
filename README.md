@@ -132,8 +132,10 @@ so hosts can show the outer command boundary. The session state is in-memory:
 `session/list` returns the in-memory session metadata, and later prompts receive
 a bounded transcript prelude so command-backed turns keep conversational context
 without claiming vendor-native durable history. `session/close` cancels active
-work and frees that in-memory session state. Config changes return the
-current config option list and publish `config_option_update` notifications.
+work and frees that in-memory session state; `session/delete` is the
+destructive cleanup path hosts should use when deleting the owning chat/session.
+Config changes return the current config option list and publish
+`config_option_update` notifications.
 Completed command-backed prompts publish `session_info_update` notifications
 with the in-memory title and updated timestamp when transcript metadata changes.
 The adapter advertises `/review` and `/init` as ACP available commands:
