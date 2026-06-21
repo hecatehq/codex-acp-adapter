@@ -141,8 +141,9 @@ production-grade.
   Codex process,
   in-memory load/resume/fork capability, bounded transcript replay for later
   command prompts, and prompt completion
-- source-shaped Codex stream fixtures for permission requests, shell/tool
-  lifecycle updates, reasoning chunks, usage, and terminal stop reasons
+- source-shaped Codex stream fixtures for permission requests, including
+  option alias/default handling, shell/tool lifecycle updates, reasoning chunks,
+  usage, and terminal stop reasons
 - auth-required error classification for native Codex failures, including the
   HTTP 401 "missing bearer or basic authentication" shape
 - opt-in real Codex CLI smoke coverage that requires an authenticated local
