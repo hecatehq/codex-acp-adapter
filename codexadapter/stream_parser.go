@@ -305,12 +305,28 @@ func codexToolRawInput(item map[string]any) any {
 }
 
 func codexToolRawOutput(item map[string]any) any {
+	if output := codexStructuredToolOutput(item); len(output) > 0 {
+		return output
+	}
 	for _, key := range []string{"raw_output", "rawOutput", "output", "result", "stdout", "stderr"} {
 		if value, ok := item[key]; ok {
 			return value
 		}
 	}
 	return nil
+}
+
+func codexStructuredToolOutput(item map[string]any) map[string]any {
+	out := map[string]any{}
+	for _, key := range []string{"stdout", "stderr", "exit_code", "exitCode"} {
+		if value, ok := item[key]; ok {
+			out[key] = value
+		}
+	}
+	if len(out) < 2 {
+		return nil
+	}
+	return out
 }
 
 func codexText(value any) string {

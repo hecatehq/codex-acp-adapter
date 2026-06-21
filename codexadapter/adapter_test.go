@@ -804,6 +804,30 @@ func TestCodexStreamParserMapsSourceShapedFixtures(t *testing.T) {
 	}
 }
 
+func TestCodexStreamParserPreservesStructuredShellOutput(t *testing.T) {
+	parser := codexadapter.NewStreamParser(commandbridge.Session{}, runtimeacp.PromptParams{})
+
+	events, err := parser.Parse([]byte(`{"method":"item/completed","params":{"item":{"type":"local_shell_call","id":"shell-1","status":"completed","stdout":"ok\n","stderr":"warn\n","exit_code":2}}}` + "\n"))
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want one shell finish: %#v", len(events), events)
+	}
+	if events[0].Update["sessionUpdate"] != "tool_call_update" ||
+		events[0].Update["toolCallId"] != "shell-1" ||
+		events[0].Update["status"] != "failed" {
+		t.Fatalf("tool finish = %#v, want failed shell finish", events[0].Update)
+	}
+	rawOutput, ok := events[0].Update["rawOutput"].(map[string]any)
+	if !ok {
+		t.Fatalf("rawOutput = %#v, want structured map", events[0].Update["rawOutput"])
+	}
+	if rawOutput["stdout"] != "ok\n" || rawOutput["stderr"] != "warn\n" || rawOutput["exit_code"] != float64(2) {
+		t.Fatalf("rawOutput = %#v, want stdout/stderr/exit_code preserved", rawOutput)
+	}
+}
+
 func TestCodexStreamParserClassifiesProviderTools(t *testing.T) {
 	tests := []struct {
 		name  string
