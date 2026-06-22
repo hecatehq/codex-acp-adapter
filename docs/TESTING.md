@@ -144,8 +144,8 @@ production-grade.
   command prompts, and prompt completion
 - source-shaped Codex stream fixtures for permission requests, including
   MCP `server/tool` permission labels, option alias/default handling,
-  shell/tool lifecycle updates, reasoning chunks, usage, and terminal stop
-  reasons
+  shell/tool lifecycle updates, reasoning chunks, usage, terminal stop reasons,
+  and live ACP client coverage for rejected and cancelled permission outcomes
 - auth-required error classification for native Codex failures, including the
   HTTP 401 "missing bearer or basic authentication" shape
 - opt-in real Codex CLI smoke coverage that requires an authenticated local
