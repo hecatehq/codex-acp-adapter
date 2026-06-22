@@ -2,11 +2,11 @@
 
 Neutral Go ACP adapter for Codex-compatible coding agents.
 
-This repository is an alpha Go ACP adapter for Codex-compatible coding agents.
-It runs as a small, auditable binary that speaks ACP over stdio. The adapter can
-run Codex CLI prompts through its native command bridge. Hecate's replacement
-path is covered by release-binary smoke tests; remaining work is deeper
-vendor-native parity and production release hardening.
+This repository provides a Go ACP adapter for Codex-compatible coding agents. It
+runs as a small, auditable binary that speaks ACP over stdio. The adapter can
+run Codex CLI prompts through its native command bridge. Hecate integration is
+covered by release-binary smoke tests; deeper vendor-native parity remains
+tracked as future work.
 
 ## Goals
 
@@ -60,7 +60,7 @@ Implemented:
 - ACP `authenticate` mapped to the native `codex login` command
 - ACP `logout` mapped to the native `codex logout` command
 - CI and tag-driven release packaging for checksum-verified,
-  provenance-attested alpha binaries
+  provenance-attested binaries
 
 Not implemented yet:
 
@@ -73,7 +73,7 @@ Not implemented yet:
 - deeper provider-native slash-command/review semantics beyond the
   adapter-owned `/review` and `/init` command surface
 - runtime config/auth/model discovery
-- deeper stable-release parity gates in `docs/STABLE_READINESS.md`
+- draft ACP RFD surfaces documented as future work in `docs/STABLE_READINESS.md`
 
 ## Development
 
