@@ -10,7 +10,59 @@ import (
 )
 
 func NewStreamParser(commandbridge.Session, runtimeacp.PromptParams) commandbridge.StreamParser {
-	return commandbridge.NewJSONLStreamParser(mapCodexStreamEvent)
+	toolMetadata := map[string]codexToolMetadata{}
+	return commandbridge.NewJSONLStreamParser(func(event map[string]any) (commandbridge.JSONLMapping, error) {
+		mapping, err := mapCodexStreamEvent(event)
+		for _, streamEvent := range mapping.Events {
+			trackCodexToolMetadata(toolMetadata, streamEvent.Update)
+		}
+		return mapping, err
+	})
+}
+
+type codexToolMetadata struct {
+	title string
+	kind  string
+}
+
+func trackCodexToolMetadata(known map[string]codexToolMetadata, update map[string]any) {
+	if len(update) == 0 {
+		return
+	}
+	id := firstString(update, "toolCallId")
+	if id == "" {
+		return
+	}
+	switch firstString(update, "sessionUpdate") {
+	case "tool_call":
+		known[id] = codexToolMetadata{
+			title: firstString(update, "title"),
+			kind:  firstString(update, "kind"),
+		}
+	case "tool_call_update":
+		if metadata, ok := known[id]; ok {
+			if codexNeedsCarriedTitle(firstString(update, "title")) && metadata.title != "" {
+				update["title"] = metadata.title
+			}
+			if codexNeedsCarriedKind(firstString(update, "kind")) && metadata.kind != "" {
+				update["kind"] = metadata.kind
+			}
+			switch firstString(update, "status") {
+			case "completed", "failed", "cancelled":
+				delete(known, id)
+			}
+		}
+	}
+}
+
+func codexNeedsCarriedTitle(title string) bool {
+	title = strings.TrimSpace(title)
+	return title == "" || title == "Codex tool"
+}
+
+func codexNeedsCarriedKind(kind string) bool {
+	kind = strings.TrimSpace(kind)
+	return kind == "" || kind == "other"
 }
 
 func mapCodexStreamEvent(event map[string]any) (commandbridge.JSONLMapping, error) {
@@ -204,7 +256,8 @@ func isCodexAgentMessage(item map[string]any) bool {
 func isCodexToolItem(item map[string]any) bool {
 	itemType := codexItemType(item)
 	if itemType == "" {
-		return firstString(item, "tool_call_id", "toolCallId", "call_id", "callId") != ""
+		return firstString(item, "tool_call_id", "toolCallId", "call_id", "callId") != "" ||
+			(codexToolID(item) != "" && codexLooksLikeToolResult(item))
 	}
 	return strings.Contains(itemType, "tool") ||
 		strings.Contains(itemType, "function_call") ||
@@ -220,6 +273,19 @@ func isCodexToolItem(item map[string]any) bool {
 		strings.Contains(itemType, "todo") ||
 		strings.Contains(itemType, "goal") ||
 		strings.Contains(itemType, "review")
+}
+
+func codexLooksLikeToolResult(item map[string]any) bool {
+	for _, key := range []string{
+		"status", "state", "outcome", "result_status", "resultStatus",
+		"raw_output", "rawOutput", "output", "result",
+		"stdout", "stderr", "exit_code", "exitCode",
+	} {
+		if _, ok := item[key]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 func codexItemType(item map[string]any) string {

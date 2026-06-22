@@ -1087,6 +1087,28 @@ func TestCodexStreamParserClassifiesProviderTools(t *testing.T) {
 	}
 }
 
+func TestCodexStreamParserCarriesToolMetadataToSparseCompletion(t *testing.T) {
+	parser := codexadapter.NewStreamParser(commandbridge.Session{}, runtimeacp.PromptParams{})
+	events, err := parser.Parse([]byte(
+		`{"method":"item/started","params":{"item":{"type":"mcp_tool_call","id":"mcp-1","server":"docs","tool":"search","arguments":{"query":"acp"}}}}` + "\n" +
+			`{"method":"item/completed","params":{"item":{"id":"mcp-1","status":"completed","output":"ok"}}}` + "\n"))
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("events len = %d, want tool start + finish: %#v", len(events), events)
+	}
+	finish := events[1].Update
+	if finish["sessionUpdate"] != "tool_call_update" ||
+		finish["toolCallId"] != "mcp-1" ||
+		finish["title"] != "docs/search" ||
+		finish["kind"] != "mcp" ||
+		finish["status"] != "completed" ||
+		finish["rawOutput"] != "ok" {
+		t.Fatalf("tool finish = %#v, want MCP metadata carried from start", finish)
+	}
+}
+
 type sessionUpdate struct {
 	Update struct {
 		SessionUpdate     string          `json:"sessionUpdate"`
