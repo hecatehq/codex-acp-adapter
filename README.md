@@ -40,8 +40,8 @@ Implemented:
 - protocol forwarding for session load, resume, fork, list, delete, and
   MCP-over-ACP message payloads
 - command-backed native Codex CLI session path using `codex exec`
-- ACP model, reasoning, sandbox, and web-search config options for the
-  command-backed path
+- ACP model, reasoning, sandbox, approval-policy, and web-search config
+  options for the command-backed path
 - per-session ACP HTTP and stdio MCP server config propagation into Codex CLI
   `-c mcp_servers.<name>=...` overrides
 - in-memory command-backed session load/resume/fork plus bounded transcript
@@ -67,7 +67,7 @@ Not implemented yet:
 - vendor-specific durable/native persistent session semantics across adapter
   process restarts
 - deeper provider-native permission response edge cases beyond parsed request
-  mapping and the selected Codex sandbox mode
+  mapping and the selected Codex sandbox / approval policy
 - vendor-native MCP tool permission and connection-lifecycle mapping beyond
   passing per-session MCP server config into Codex
 - deeper provider-native slash-command/review semantics beyond the
@@ -120,13 +120,13 @@ machine-readable output.
 
 By default, the root ACP server owns lightweight ACP sessions and runs each
 prompt through `codex exec` in the session workspace. The command-backed path
-exposes ACP config options for model, reasoning effort, Codex sandbox mode, and
-Codex live web search, translates session MCP servers into temporary Codex
-`mcp_servers` config overrides, passes only provider-specific environment
-variables through the shared process runner, and runs Codex with `exec --json`.
-Codex command approvals are governed by the selected sandbox plus permission
-events emitted by the Codex JSONL stream; the adapter does not pass removed
-legacy approval flags. Known Codex JSONL events are
+exposes ACP config options for model, reasoning effort, Codex sandbox mode,
+Codex approval policy including the explicit bypass mode, and Codex live web
+search, translates session MCP servers into temporary Codex `mcp_servers`
+config overrides, passes only provider-specific environment variables through
+the shared process runner, and runs Codex with `exec --json`. Codex command
+approvals are governed by the selected sandbox and approval policy plus
+permission events emitted by the Codex JSONL stream. Known Codex JSONL events are
 translated into ACP assistant text, reasoning, tool-call, permission-request,
 and usage updates; unknown JSONL events are ignored rather than shown as raw
 chat text. A generic `tool_call` still wraps the native Codex process execution

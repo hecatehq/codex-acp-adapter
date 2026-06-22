@@ -71,6 +71,7 @@ func TestNewServerExposesHecateControls(t *testing.T) {
 			{ID: "model", Category: "model", CurrentValue: "__default__"},
 			{ID: "reasoning_effort", Category: "thought_level", CurrentValue: "__default__"},
 			{ID: "sandbox", Category: "permission", CurrentValue: "workspace-write"},
+			{ID: "approval_policy", Category: "permission", CurrentValue: "__default__"},
 			{ID: "web_search", Category: "tool", CurrentValue: "disabled"},
 		},
 		AvailableCommands: []string{"review", "init"},
@@ -139,7 +140,7 @@ func TestNewCLISpecExposesLibraryContract(t *testing.T) {
 	if spec.Info.Name != codexadapter.Name || spec.Info.Version != "2.0.0" {
 		t.Fatalf("spec.Info = %#v", spec.Info)
 	}
-	if spec.Command == nil || spec.Command.BuildPrompt == nil || spec.Command.BuildAuthenticate == nil || spec.Command.BuildLogout == nil || spec.Command.NewStreamParser == nil || len(spec.Command.AuthMethods) != 1 || len(spec.Command.Options) != 4 || len(spec.Command.Commands) != 2 || !spec.Command.IncludeTranscript {
+	if spec.Command == nil || spec.Command.BuildPrompt == nil || spec.Command.BuildAuthenticate == nil || spec.Command.BuildLogout == nil || spec.Command.NewStreamParser == nil || len(spec.Command.AuthMethods) != 1 || len(spec.Command.Options) != 5 || len(spec.Command.Commands) != 2 || !spec.Command.IncludeTranscript {
 		t.Fatalf("command spec = %#v, want command-backed bridge with config options and commands", spec.Command)
 	}
 	if spec.Command.AuthMethods[0].ID != "agent-login" || spec.Command.AuthMethods[0].Name != "Codex login" {
@@ -249,6 +250,7 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 			"model":            "gpt-5-codex",
 			"reasoning_effort": "high",
 			"sandbox":          "read-only",
+			"approval_policy":  "never",
 			"web_search":       "enabled",
 		},
 	}, runtimeacp.PromptParams{
@@ -259,6 +261,7 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 	}
 	wantArgs := []string{
 		"--search",
+		"--ask-for-approval", "never",
 		"exec",
 		"--cd", "/work",
 		"--sandbox", "read-only",
@@ -270,6 +273,33 @@ func TestPromptCommandBuildsCodexExec(t *testing.T) {
 		"--config", `model_reasoning_effort="high"`,
 		"--config", `mcp_servers.hecate_01_weather-http={url="https://mcp.example.com/mcp",http_headers={"Authorization"="Bearer token","X-Test"="yes"}}`,
 		"--config", `mcp_servers.hecate_02_Local_FS={command="/bin/mcp",args=["--root","/work"],env={"TOKEN"="secret"}}`,
+		"hello codex",
+	}
+	if got.Command != "codex" || got.Dir != "/work" || !reflect.DeepEqual(got.Args, wantArgs) {
+		t.Fatalf("process spec = %#v, want codex exec args %#v", got, wantArgs)
+	}
+}
+
+func TestPromptCommandBuildsCodexExecBypassApprovalsAndSandbox(t *testing.T) {
+	got, err := codexadapter.PromptCommand(commandbridge.Session{
+		CWD: "/work",
+		Config: map[string]string{
+			"approval_policy": "bypass",
+			"sandbox":         "read-only",
+		},
+	}, runtimeacp.PromptParams{
+		Prompt: []runtimeacp.ContentBlock{{Type: "text", Text: "hello codex"}},
+	})
+	if err != nil {
+		t.Fatalf("PromptCommand: %v", err)
+	}
+	wantArgs := []string{
+		"--dangerously-bypass-approvals-and-sandbox",
+		"exec",
+		"--cd", "/work",
+		"--ignore-user-config",
+		"--skip-git-repo-check",
+		"--json",
 		"hello codex",
 	}
 	if got.Command != "codex" || got.Dir != "/work" || !reflect.DeepEqual(got.Args, wantArgs) {
