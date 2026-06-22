@@ -150,6 +150,20 @@ func ConfigOptions() []commandbridge.SelectConfigOption {
 			},
 		},
 		{
+			ID:           "approval_policy",
+			Name:         "Approval policy",
+			Description:  "Codex CLI approval policy for tool execution. Default uses the Codex CLI default.",
+			Category:     "permission",
+			DefaultValue: configDefault,
+			Options: []commandbridge.SelectValue{
+				{Value: configDefault, Name: "Configured default"},
+				{Value: "untrusted", Name: "Untrusted commands only"},
+				{Value: "on-request", Name: "Model requests approval"},
+				{Value: "never", Name: "Never ask"},
+				{Value: "bypass", Name: "Bypass approvals and sandbox"},
+			},
+		},
+		{
 			ID:           "web_search",
 			Name:         "Web search",
 			Description:  "Enable Codex CLI live web search for normal exec turns.",
@@ -178,10 +192,15 @@ func PromptCommand(session commandbridge.Session, params runtimeacp.PromptParams
 	if selectedConfig(session, "web_search") == "enabled" {
 		args = append(args, "--search")
 	}
+	args, bypassSandbox := appendCodexApprovalArgs(args, session)
 	args = append(args,
 		"exec",
 		"--cd", session.CWD,
-		"--sandbox", selectedSandbox(session),
+	)
+	if !bypassSandbox {
+		args = append(args, "--sandbox", selectedSandbox(session))
+	}
+	args = append(args,
 		"--ignore-user-config",
 		"--skip-git-repo-check",
 		"--json",
@@ -273,10 +292,11 @@ func CommandAuthRequired(result adapterprocess.Result, err error) bool {
 }
 
 func codexReviewCommand(session commandbridge.Session, instructions string) (adapterprocess.Spec, error) {
-	args := []string{
+	args, _ := appendCodexApprovalArgs(nil, session)
+	args = append(args,
 		"review",
 		"--uncommitted",
-	}
+	)
 	if model := selectedConfig(session, "model"); model != "" {
 		args = append(args, "--config", fmt.Sprintf("model=%q", model))
 	}
@@ -297,6 +317,17 @@ func codexReviewCommand(session commandbridge.Session, instructions string) (ada
 		Dir:     session.CWD,
 		Env:     codexProcessEnv(),
 	}, nil
+}
+
+func appendCodexApprovalArgs(args []string, session commandbridge.Session) ([]string, bool) {
+	switch approval := selectedConfig(session, "approval_policy"); approval {
+	case "":
+		return args, false
+	case "bypass":
+		return append(args, "--dangerously-bypass-approvals-and-sandbox"), true
+	default:
+		return append(args, "--ask-for-approval", approval), false
+	}
 }
 
 func codexMCPConfigArgs(servers []runtimeacp.MCPServer) ([]string, error) {

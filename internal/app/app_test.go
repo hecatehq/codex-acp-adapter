@@ -269,14 +269,16 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 		`{"jsonrpc":"2.0","id":2,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"model","value":"gpt-5-codex"}}`,
 		`{"jsonrpc":"2.0","id":3,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"reasoning_effort","value":"high"}}`,
 		`{"jsonrpc":"2.0","id":4,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"sandbox","value":"read-only"}}`,
-		`{"jsonrpc":"2.0","id":5,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"web_search","value":"enabled"}}`,
-		`{"jsonrpc":"2.0","id":6,"method":"session/prompt","params":{"sessionId":"session-1","prompt":[{"type":"text","text":"hello codex"}]}}`,
+		`{"jsonrpc":"2.0","id":5,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"approval_policy","value":"never"}}`,
+		`{"jsonrpc":"2.0","id":6,"method":"session/set_config_option","params":{"sessionId":"session-1","configId":"web_search","value":"enabled"}}`,
+		`{"jsonrpc":"2.0","id":7,"method":"session/prompt","params":{"sessionId":"session-1","prompt":[{"type":"text","text":"hello codex"}]}}`,
 	}, "\n") + "\n")
 	spec := adapterSpec(input, &stdout, &stderr)
 	spec.Command.NewID = func() string { return "session-1" }
 	spec.Command.Runner = commandbridge.RunnerFunc(func(_ context.Context, got adapterprocess.Spec) (adapterprocess.Result, error) {
 		wantArgs := []string{
 			"--search",
+			"--ask-for-approval", "never",
 			"exec",
 			"--cd", workdir,
 			"--sandbox", "read-only",
@@ -300,8 +302,8 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 		t.Fatalf("Run returned %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
 	responses := decodeAppResponses(t, stdout.Bytes())
-	if len(responses) != 15 {
-		t.Fatalf("got %d envelopes, want available commands, session/new, four config update notifications + responses, tool start, assistant update, tool finish, session info, prompt result\n%s", len(responses), stdout.String())
+	if len(responses) != 17 {
+		t.Fatalf("got %d envelopes, want available commands, session/new, five config update notifications + responses, tool start, assistant update, tool finish, session info, prompt result\n%s", len(responses), stdout.String())
 	}
 	commands := decodeAppUpdate(t, responses[0])
 	if commands.Update.SessionUpdate != "available_commands_update" ||
@@ -319,8 +321,8 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 		} `json:"configOptions"`
 	}
 	decodeAppResult(t, responses[1], &created)
-	if created.SessionID != "session-1" || len(created.ConfigOptions) != 4 {
-		t.Fatalf("created session = %#v, want id and four config options", created)
+	if created.SessionID != "session-1" || len(created.ConfigOptions) != 5 {
+		t.Fatalf("created session = %#v, want id and five config options", created)
 	}
 	if created.ConfigOptions[0].ID != "model" || created.ConfigOptions[0].Category != "model" {
 		t.Fatalf("model option = %#v, want model category", created.ConfigOptions[0])
@@ -331,8 +333,11 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 	if created.ConfigOptions[2].ID != "sandbox" || created.ConfigOptions[2].Category != "permission" || created.ConfigOptions[2].CurrentValue != "workspace-write" {
 		t.Fatalf("sandbox option = %#v, want permission category with workspace-write default", created.ConfigOptions[2])
 	}
-	if created.ConfigOptions[3].ID != "web_search" || created.ConfigOptions[3].Category != "tool" || created.ConfigOptions[3].CurrentValue != "disabled" {
-		t.Fatalf("web search option = %#v, want tool category with disabled default", created.ConfigOptions[3])
+	if created.ConfigOptions[3].ID != "approval_policy" || created.ConfigOptions[3].Category != "permission" || created.ConfigOptions[3].CurrentValue != "__default__" {
+		t.Fatalf("approval option = %#v, want permission category with configured default", created.ConfigOptions[3])
+	}
+	if created.ConfigOptions[4].ID != "web_search" || created.ConfigOptions[4].Category != "tool" || created.ConfigOptions[4].CurrentValue != "disabled" {
+		t.Fatalf("web search option = %#v, want tool category with disabled default", created.ConfigOptions[4])
 	}
 	assertConfigOptionUpdate(t, responses[2], "model", "gpt-5-codex")
 	var modelSet struct {
@@ -342,30 +347,31 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 		} `json:"configOptions"`
 	}
 	decodeAppResult(t, responses[3], &modelSet)
-	if len(modelSet.ConfigOptions) != 4 || modelSet.ConfigOptions[0].CurrentValue != "gpt-5-codex" {
+	if len(modelSet.ConfigOptions) != 5 || modelSet.ConfigOptions[0].CurrentValue != "gpt-5-codex" {
 		t.Fatalf("model set result = %#v, want selected model", modelSet.ConfigOptions)
 	}
 	assertConfigOptionUpdate(t, responses[4], "reasoning_effort", "high")
 	assertConfigOptionUpdate(t, responses[6], "sandbox", "read-only")
-	assertConfigOptionUpdate(t, responses[8], "web_search", "enabled")
+	assertConfigOptionUpdate(t, responses[8], "approval_policy", "never")
+	assertConfigOptionUpdate(t, responses[10], "web_search", "enabled")
 
-	start := decodeAppUpdate(t, responses[10])
+	start := decodeAppUpdate(t, responses[12])
 	if start.Update.SessionUpdate != "tool_call" ||
 		start.Update.Status != "in_progress" ||
 		start.Update.ToolCallID == "" {
 		t.Fatalf("tool start = %#v, want running command", start)
 	}
-	update := decodeAppUpdate(t, responses[11])
+	update := decodeAppUpdate(t, responses[13])
 	if update.Update.SessionUpdate != "agent_message_chunk" || decodeAppChunkText(t, update.Update.Content) != "codex answer" {
 		t.Fatalf("assistant update = %#v, want codex answer", update)
 	}
-	finish := decodeAppUpdate(t, responses[12])
+	finish := decodeAppUpdate(t, responses[14])
 	if finish.Update.SessionUpdate != "tool_call_update" ||
 		finish.Update.ToolCallID != start.Update.ToolCallID ||
 		finish.Update.Status != "completed" {
 		t.Fatalf("tool finish = %#v, want completed command", finish)
 	}
-	info := decodeAppUpdate(t, responses[13])
+	info := decodeAppUpdate(t, responses[15])
 	if info.Update.SessionUpdate != "session_info_update" ||
 		info.Update.Title != "hello codex" ||
 		info.Update.UpdatedAt == "" {
@@ -374,7 +380,7 @@ func TestCommandBridgeRunsCodexExecWithConfigOptions(t *testing.T) {
 	var prompt struct {
 		StopReason string `json:"stopReason"`
 	}
-	decodeAppResult(t, responses[14], &prompt)
+	decodeAppResult(t, responses[16], &prompt)
 	if prompt.StopReason != "end_turn" {
 		t.Fatalf("stop reason = %q, want end_turn", prompt.StopReason)
 	}

@@ -126,10 +126,10 @@ production-grade.
   allowlist inheritance, and runtime-flag precedence over the native command
   bridge
 - root ACP native command bridge: session creation with Codex model/reasoning
-  config options, sandbox config option, web-search config option, config
-  updates, current Codex search flag plus isolated
-  `codex exec --ignore-user-config --json` argv construction without removed
-  approval flags, explicit native
+  config options, sandbox config option, approval-policy config option,
+  web-search config option, config updates, current Codex search flag plus
+  isolated `codex exec --ignore-user-config --json` argv construction,
+  explicit native
   command environment allowlists, `/review`
   advertisement plus `codex review --uncommitted` argv construction, `/init`
   advertisement through the normal `codex exec` prompt path, additional
@@ -150,8 +150,9 @@ production-grade.
   HTTP 401 "missing bearer or basic authentication" shape
 - opt-in real Codex CLI smoke coverage that requires an authenticated local
   `codex` binary and proves session list/load, a real prompt completion, a
-  real tool/file update flow with permission auto-approval, and cancellation
-  with no double-settle through the ACP command bridge
+  real tool/file update flow with permission auto-approval, a stdio MCP tool
+  call through a local echo fixture, and cancellation with no double-settle
+  through the ACP command bridge
 - shared adapter conformance checks for the Hecate-facing ACP initialize
   contract, advertised auth/logout capabilities, session config selectors, and
   available slash-command names
@@ -180,11 +181,12 @@ vendor-native Codex parity:
   selectors
 - provider-native permission response edge cases beyond parsed request/result
   status mapping
-  and the selected Codex sandbox mode
+  and the selected Codex sandbox / approval policy
 - deeper provider-native review semantics beyond classifying review tool
   updates
 - late permission responses after cancellation
-- vendor MCP connection lifecycle semantics and MCP tool approval elicitations
+- deeper vendor MCP connection lifecycle semantics and MCP tool approval
+  elicitations beyond the local stdio echo-tool smoke
 - unresolved stable-release parity gates listed in `docs/STABLE_READINESS.md`
 
 ## Test Strategy
@@ -227,5 +229,7 @@ The target sets `ACP_ADAPTER_REAL_CLI_SMOKE=1` and runs the `real_cli` build-tag
 test. It creates temporary workspaces, opens ACP sessions, verifies list/load,
 sends one minimal prompt through the native `codex` command bridge, runs a
 tool/file update prompt with permission requests auto-approved by the test
-client, and cancels one long-running prompt to assert a single cancelled prompt
-settlement.
+client, passes a local stdio MCP echo server through `mcpServers` and asserts
+the provider calls its `echo` tool with `approval_policy=bypass` for that
+temporary MCP session, and cancels one long-running prompt to assert a single
+cancelled prompt settlement.
