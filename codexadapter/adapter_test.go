@@ -3,12 +3,14 @@ package codexadapter_test
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hecatehq/acp-adapter-kit/acptest"
 	"github.com/hecatehq/acp-adapter-kit/adaptertest"
@@ -652,6 +654,70 @@ printf '{"method":"item/completed","params":{"item":{"type":"agent_message","id"
 	responses[5].ResultInto(t, &promptResult)
 	if promptResult.StopReason != "end_turn" {
 		t.Fatalf("stop reason = %q, want end_turn", promptResult.StopReason)
+	}
+}
+
+func TestNewServerStopsCodexStreamWhenPermissionDenied(t *testing.T) {
+	tests := []struct {
+		name       string
+		option     acptest.LiveClientOption
+		wantReason string
+	}{
+		{
+			name:       "rejected",
+			option:     acptest.WithAutoRejectPermissions(),
+			wantReason: "permission rejected for Run tests",
+		},
+		{
+			name:       "cancelled",
+			option:     acptest.WithAutoCancelPermissions(),
+			wantReason: "permission cancelled for Run tests",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			installFakeCommand(t, "codex", `
+if [ "$1" != "exec" ]; then
+  echo "unexpected command: $*" >&2
+  exit 64
+fi
+printf '{"method":"permission/requested","params":{"toolCall":{"toolCallId":"tool-1","title":"Run tests","kind":"execute","rawInput":{"command":"go test ./..."}},"options":[{"optionId":"allow","name":"Allow","kind":"allow_once"},{"optionId":"reject","name":"Reject","kind":"reject_once"}]}}\n'
+printf '{"method":"item/completed","params":{"item":{"type":"agent_message","id":"msg-1","text":"should not continue"}}}\n'
+	`)
+			client := acptest.NewLiveClient(t, codexadapter.NewServer("test"), tt.option)
+			client.Request("initialize", "initialize", map[string]any{}, time.Second)
+			createdResponses := client.Request("new-session", "session/new", map[string]any{"cwd": t.TempDir()}, time.Second)
+			var session struct {
+				SessionID string `json:"sessionId"`
+			}
+			createdResponses[len(createdResponses)-1].ResultInto(t, &session)
+
+			responses := client.PromptText("prompt", session.SessionID, "hello", time.Second)
+			if len(responses) < 3 {
+				t.Fatalf("responses = %#v, want tool start + permission request + prompt error", responses)
+			}
+			permission := decodePermissionRequest(t, responses[1])
+			if permission.ToolCall.ToolCallID != "tool-1" ||
+				permission.ToolCall.Title != "Run tests" ||
+				permission.ToolCall.Kind != "execute" {
+				t.Fatalf("permission = %#v, want Codex stream permission request", permission)
+			}
+			for _, response := range responses {
+				if response.Method != "session/update" {
+					continue
+				}
+				update := decodeSessionUpdate(t, response)
+				if update.Update.SessionUpdate == "agent_message_chunk" {
+					t.Fatalf("responses = %#v, did not expect assistant continuation after denied permission", responses)
+				}
+			}
+			final := responses[len(responses)-1]
+			if final.Error == nil ||
+				final.Error.Message != "prompt command failed" ||
+				!strings.Contains(fmt.Sprint(final.Error.Data), tt.wantReason) {
+				t.Fatalf("final response = %#v, want prompt command failed with %q", final, tt.wantReason)
+			}
+		})
 	}
 }
 
