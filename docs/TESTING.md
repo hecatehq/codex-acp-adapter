@@ -137,9 +137,9 @@ production-grade.
   `-c mcp_servers.<name>=...` overrides, streamed JSONL parsing into ACP
   assistant text, reasoning, usage, terminal stop reasons, and provider-native
   tool classifications for shell, file, patch, web, MCP, image, plan, TODO,
-  goal, and review updates, failed status mapping for rejected/denied/blocked
-  or timed-out provider tool results, generic command `tool_call` activity for
-  the outer Codex process,
+  goal, and review updates, carried tool metadata for sparse completion events,
+  failed status mapping for rejected/denied/blocked or timed-out provider tool
+  results, generic command `tool_call` activity for the outer Codex process,
   in-memory load/resume/fork capability, bounded transcript replay for later
   command prompts, and prompt completion
 - source-shaped Codex stream fixtures for permission requests, including
