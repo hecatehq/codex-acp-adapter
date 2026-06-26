@@ -917,6 +917,26 @@ func TestCodexStreamParserMapsTerminalStopReason(t *testing.T) {
 	}
 }
 
+func TestCodexStreamParserMapsCancelledStopReason(t *testing.T) {
+	parser := codexadapter.NewStreamParser(commandbridge.Session{}, runtimeacp.PromptParams{})
+
+	events, err := parser.Parse([]byte(`{"method":"turn/completed","params":{"finish_reason":"cancelled","usage":{"total_tokens":3,"context_window":128}}}` + "\n"))
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want usage update: %#v", len(events), events)
+	}
+	if events[0].Update["sessionUpdate"] != "usage_update" ||
+		events[0].Update["used"] != 3 ||
+		events[0].Update["size"] != 128 {
+		t.Fatalf("usage = %#v, want terminal usage", events[0].Update)
+	}
+	if got := parser.StopReason(); got != runtimeacp.StopReasonCancelled {
+		t.Fatalf("StopReason() = %q, want cancelled", got)
+	}
+}
+
 func TestCodexStreamParserMapsCurrentCLIJSONL(t *testing.T) {
 	parser := codexadapter.NewStreamParser(commandbridge.Session{}, runtimeacp.PromptParams{})
 	fixture := strings.Join([]string{
