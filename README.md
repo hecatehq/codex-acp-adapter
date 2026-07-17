@@ -2,11 +2,10 @@
 
 Neutral Go ACP adapter for Codex-compatible coding agents.
 
-This repository provides a Go ACP adapter for Codex-compatible coding agents. It
-runs as a small, auditable binary that speaks ACP over stdio. The adapter can
-run Codex CLI prompts through its native command bridge. Hecate integration is
-covered by release-binary smoke tests; deeper vendor-native parity remains
-tracked as future work.
+This repository provides a Go ACP adapter for Codex-compatible coding agents.
+It can run as a small, auditable ACP stdio binary or as an in-process Go
+library. Both modes run Codex CLI prompts through the same native command
+bridge; deeper vendor-native parity remains tracked as future work.
 
 ## Goals
 
@@ -83,12 +82,13 @@ and fake-runtime test code lives in
 focused on the Codex-specific CLI boundary, doctor defaults, docs, release
 workflow, and vendor behavior.
 
-The binary remains the primary integration mode. Hosts that need an embedded
-adapter can import `github.com/hecatehq/codex-acp-adapter/codexadapter` to build
+Hosts can import `github.com/hecatehq/codex-acp-adapter/codexadapter` to build
 the same ACP server, info/options, CLI spec, config options, environment
 allowlists, and Codex prompt command without shelling out to
 `codex-acp-adapter`. The embedded path still launches the underlying `codex` CLI
 for prompts; it only removes the extra adapter process boundary.
+`NewServerWithRunner` lets the host bind that child process to an exact
+executable path and host-owned sanitized environment.
 
 ```sh
 make release-check
@@ -148,6 +148,11 @@ is passed through `codex exec` as a normal Codex slash prompt so Codex can
 inspect the workspace and create or update repository agent instructions.
 The adapter advertises one ACP auth method (`agent-login`): ACP
 `authenticate` maps to `codex login`, and ACP `logout` maps to `codex logout`.
+
+The command-backed path does not advertise ACP inline-image or embedded-context
+capabilities. Hosts should provide files and images as ACP resource links; the
+adapter turns each link into an explicit name, MIME type, and URI in the prompt
+passed to `codex`.
 
 The root ACP server can also launch an explicit subprocess-backed ACP runtime
 with `--runtime-binary`, `--runtime-workdir`, and repeated `--runtime-arg`
