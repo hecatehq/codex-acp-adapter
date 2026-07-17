@@ -1,6 +1,7 @@
 package codexadapter_test
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -27,8 +28,8 @@ func TestInfoPinsCodexCapabilities(t *testing.T) {
 	if info.Name != codexadapter.Name || info.Title != codexadapter.Title || info.Version != "1.2.3" {
 		t.Fatalf("info = %#v, want Codex adapter metadata", info)
 	}
-	if !info.Capabilities.Images ||
-		!info.Capabilities.EmbeddedContext ||
+	if info.Capabilities.Images ||
+		info.Capabilities.EmbeddedContext ||
 		!info.Capabilities.MCPHTTP ||
 		info.Capabilities.MCPSSE ||
 		!info.Capabilities.LoadSession ||
@@ -52,8 +53,8 @@ func TestInitializeAdvertisesLoadSession(t *testing.T) {
 		Name:                  codexadapter.Name,
 		Title:                 codexadapter.Title,
 		Version:               "test",
-		Images:                true,
-		EmbeddedContext:       true,
+		Images:                false,
+		EmbeddedContext:       false,
 		MCPHTTP:               true,
 		MCPSSE:                false,
 		LoadSession:           true,
@@ -498,6 +499,22 @@ printf 'logged in\n'
 	resp.ResultInto(t, &result)
 	if len(result) != 0 {
 		t.Fatalf("authenticate result = %#v, want empty object", result)
+	}
+}
+
+func TestNewServerWithRunnerUsesHostRunner(t *testing.T) {
+	var got adapterprocess.Spec
+	runner := commandbridge.RunnerFunc(func(_ context.Context, spec adapterprocess.Spec) (adapterprocess.Result, error) {
+		got = spec
+		return adapterprocess.Result{}, nil
+	})
+	client := acptest.NewClient(t, codexadapter.NewServerWithRunner("test", runner))
+
+	resp := client.Request("authenticate", map[string]any{"methodId": "agent-login"})
+	var result map[string]any
+	resp.ResultInto(t, &result)
+	if got.Command != "codex" || len(got.Args) != 1 || got.Args[0] != "login" {
+		t.Fatalf("runner command = %q args=%#v, want provider login command", got.Command, got.Args)
 	}
 }
 
