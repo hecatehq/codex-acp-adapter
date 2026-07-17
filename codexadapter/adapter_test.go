@@ -1,6 +1,7 @@
 package codexadapter_test
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -78,6 +79,63 @@ func TestNewServerExposesHecateControls(t *testing.T) {
 		},
 		AvailableCommands: []string{"review", "init"},
 	})
+}
+
+func TestNewServerDefaultSessionIDsRemainDistinctAcrossRestarts(t *testing.T) {
+	newSession := func(t *testing.T, client *acptest.Client) string {
+		t.Helper()
+		responses := client.Send(map[string]any{
+			"jsonrpc": "2.0",
+			"id":      1,
+			"method":  "session/new",
+			"params":  map[string]any{"cwd": t.TempDir()},
+		})
+		if len(responses) != 2 {
+			t.Fatalf("session/new responses = %#v, want available commands + result", responses)
+		}
+		var created struct {
+			SessionID string `json:"sessionId"`
+		}
+		responses[1].ResultInto(t, &created)
+		assertRestartSafeSessionID(t, created.SessionID)
+		return created.SessionID
+	}
+
+	firstClient := acptest.NewClient(t, codexadapter.NewServer("test"))
+	first := newSession(t, firstClient)
+	second := newSession(t, acptest.NewClient(t, codexadapter.NewServer("test")))
+	if first == second {
+		t.Fatalf("independent adapter processes returned the same session id %q", first)
+	}
+
+	forkResponses := firstClient.Send(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      2,
+		"method":  "session/fork",
+		"params":  map[string]any{"sessionId": first},
+	})
+	if len(forkResponses) != 2 {
+		t.Fatalf("session/fork responses = %#v, want available commands + result", forkResponses)
+	}
+	var forked struct {
+		SessionID string `json:"sessionId"`
+	}
+	forkResponses[1].ResultInto(t, &forked)
+	assertRestartSafeSessionID(t, forked.SessionID)
+	if forked.SessionID == first {
+		t.Fatalf("fork reused source session id %q", first)
+	}
+}
+
+func assertRestartSafeSessionID(t testing.TB, sessionID string) {
+	t.Helper()
+	encoded := strings.TrimPrefix(sessionID, "session-")
+	if encoded == sessionID || len(encoded) != 32 {
+		t.Fatalf("session id = %q, want session- plus 128 bits", sessionID)
+	}
+	if _, err := hex.DecodeString(encoded); err != nil {
+		t.Fatalf("session id = %q, want hexadecimal entropy: %v", sessionID, err)
+	}
 }
 
 func TestNewServerCloseSessionFreesCommandBridgeState(t *testing.T) {
