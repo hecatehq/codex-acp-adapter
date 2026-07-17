@@ -682,23 +682,15 @@ fi
 printf '{"method":"permission/requested","params":{"toolCall":{"toolCallId":"tool-1","title":"Run tests","kind":"execute","rawInput":{"command":"go test ./..."}},"options":[{"optionId":"allow","name":"Allow","kind":"allow_once"},{"optionId":"reject","name":"Reject","kind":"reject_once"}]}}\n'
 printf '{"method":"item/completed","params":{"item":{"type":"agent_message","id":"msg-1","text":"allowed"}}}\n'
 	`)
-	client := acptest.NewClient(t, codexadapter.NewServer("test"))
-	client.Request("initialize", map[string]any{})
-	createdResponses := client.Send(map[string]any{
-		"jsonrpc": "2.0",
-		"id":      2,
-		"method":  "session/new",
-		"params":  map[string]any{"cwd": t.TempDir()},
-	})
+	client := acptest.NewLiveClient(t, codexadapter.NewServer("test"), acptest.WithAutoAllowPermissions())
+	client.Request("initialize", "initialize", map[string]any{}, time.Second)
+	createdResponses := client.Request("new-session", "session/new", map[string]any{"cwd": t.TempDir()}, time.Second)
 	var session struct {
 		SessionID string `json:"sessionId"`
 	}
-	createdResponses[1].ResultInto(t, &session)
+	createdResponses[len(createdResponses)-1].ResultInto(t, &session)
 
-	responses := client.SendRaw(strings.Join([]string{
-		`{"jsonrpc":"2.0","id":3,"method":"session/prompt","params":{"sessionId":"` + session.SessionID + `","prompt":[{"type":"text","text":"hello"}]}}`,
-		`{"jsonrpc":"2.0","id":"server-1","result":{"outcome":{"outcome":"selected","optionId":"allow"}}}`,
-	}, "\n") + "\n")
+	responses := client.PromptText("prompt", session.SessionID, "hello", time.Second)
 	if len(responses) != 6 {
 		t.Fatalf("responses = %#v, want tool start + permission + answer + tool finish + session info + prompt result", responses)
 	}
