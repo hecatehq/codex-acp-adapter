@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hecatehq/acp-adapter-kit/acp"
 	"github.com/hecatehq/acp-adapter-kit/acptest"
 	"github.com/hecatehq/acp-adapter-kit/adaptertest"
 	"github.com/hecatehq/acp-adapter-kit/commandbridge"
@@ -459,10 +460,50 @@ func TestNewServerPublishesAvailableCommands(t *testing.T) {
 	if update.Update.SessionUpdate != "available_commands_update" ||
 		len(update.Update.AvailableCommands) != 2 ||
 		update.Update.AvailableCommands[0].Name != "review" ||
-		update.Update.AvailableCommands[0].Input.Unstructured.Hint != "optional review instructions" ||
+		update.Update.AvailableCommands[0].Input.Hint != "optional review instructions" ||
 		update.Update.AvailableCommands[1].Name != "init" ||
-		update.Update.AvailableCommands[1].Input.Unstructured.Hint != "optional instruction focus" {
+		update.Update.AvailableCommands[1].Input.Hint != "optional instruction focus" {
 		t.Fatalf("available commands = %#v, want review/init commands", update)
+	}
+	var wire struct {
+		Update struct {
+			AvailableCommands []map[string]json.RawMessage `json:"availableCommands"`
+		} `json:"update"`
+	}
+	if err := json.Unmarshal(responses[0].Params, &wire); err != nil {
+		t.Fatalf("decode command wire notification: %v", err)
+	}
+	if got := string(wire.Update.AvailableCommands[0]["input"]); got != `{"hint":"optional review instructions"}` {
+		t.Fatalf("command input wire = %s, want flat hint", got)
+	}
+}
+
+func TestCommandWireEmitsRequiredEmptyDescription(t *testing.T) {
+	spec := codexadapter.CommandSpec()
+	spec.Commands[1].Description = ""
+	server := acp.NewServer(codexadapter.Info("test"), commandbridge.New(*spec).Options()...)
+	client := acptest.NewClient(t, server)
+
+	responses := client.Send(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "session/new",
+		"params":  map[string]any{"cwd": t.TempDir()},
+	})
+	if len(responses) != 2 {
+		t.Fatalf("responses = %#v, want available command update + session response", responses)
+	}
+
+	var wire struct {
+		Update struct {
+			AvailableCommands []map[string]json.RawMessage `json:"availableCommands"`
+		} `json:"update"`
+	}
+	if err := json.Unmarshal(responses[0].Params, &wire); err != nil {
+		t.Fatalf("decode command wire notification: %v", err)
+	}
+	if got := string(wire.Update.AvailableCommands[1]["description"]); got != `""` {
+		t.Fatalf("empty command description wire = %s, want required empty string", got)
 	}
 }
 
@@ -1277,9 +1318,7 @@ type sessionUpdate struct {
 		AvailableCommands []struct {
 			Name  string `json:"name"`
 			Input struct {
-				Unstructured struct {
-					Hint string `json:"hint"`
-				} `json:"unstructured"`
+				Hint string `json:"hint"`
 			} `json:"input"`
 		} `json:"availableCommands"`
 	} `json:"update"`
